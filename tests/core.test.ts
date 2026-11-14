@@ -28,3 +28,15 @@ test("name capture stops before the DOB label", () => {
   const red = redact("Patient: Noah Abernathy    DOB: 04/22/1955", s).redacted;
   assert.ok(red.includes("DOB:"), red);
 });
+import { checkLetter } from "../src/lib/letter";
+test("letter checker rejects invented amounts and codes", () => {
+  const b = makeBill(3); const f = audit(parseBill(b.text));
+  const good = `Dispute ${f[0].cpt ?? ""} for $${f[0].atStake.toFixed(2)}. [NAME_1]`;
+  assert.ok(checkLetter(good, f, ["[NAME_1]"]).pass, JSON.stringify(checkLetter(good, f, ["[NAME_1]"])));
+  const bad = `Refund $9,999.99 for 99999 to [NAME_7]`;
+  assert.equal(checkLetter(bad, f, ["[NAME_1]"]).issues.length, 3);
+});
+test("letter checker accepts whole-dollar amounts quoted from findings", () => {
+  const f = [{ rule: "PRICE_OUTLIER", lines: [1], cpt: "J1885", atStake: 80, severity: "advisory", title: "Price outlier: J1885", detail: "$125.00 per unit is over 3× a typical $15 charge" }] as never;
+  assert.ok(checkLetter("Typical is $15.00; billed $125.00, $80.00 over. J1885", f, []).pass);
+});

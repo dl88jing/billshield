@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-11-14T12:30:06.783Z",
+  "target": "https://billshield-kappa.vercel.app",
+  "browser": "headless Chrome (no Gemini Nano) → cloud path",
+  "model": "gemini-3.5-flash-lite via Firebase AI Logic",
+  "n": 12,
+  "cloudLetters": 12,
+  "gatePassed": 12,
+  "factCheckPassed": 12,
+  "rejectedToTemplate": 0,
+  "rows": [
+    {
+      "bill": "bill-100",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 8 amounts, 6 codes all traced to findings",
+      "note": "",
+      "seconds": 7.922
+    },
+    {
+      "bill": "bill-101",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 7 amounts, 3 codes all traced to findings",
+      "note": "",
+      "seconds": 6.871
+    },
+    {
+      "bill": "bill-102",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 6 amounts, 7 codes all traced to findings",
+      "note": "",
+      "seconds": 6.859
+    },
+    {
+      "bill": "bill-103",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 7 amounts, 3 codes all traced to findings",
+      "note": "",
+      "seconds": 9.381
+    },
+    {
+      "bill": "bill-104",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 9 amounts, 3 codes all traced to findings",
+      "note": "",
+      "seconds": 7.877
+    },
+    {
+      "bill": "bill-105",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 7 amounts, 7 codes all traced to findings",
+      "note": "",
+      "seconds": 10.412
+    },
+    {
+      "bill": "bill-106",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 9 amounts, 2 codes all traced to findings",
+      "note": "",
+      "seconds": 6.969
+    },
+    {
+      "bill": "bill-118",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 2 amounts, 1 codes all traced to findings",
+      "note": "",
+      "seconds": 9.988
+    },
+    {
+      "bill": "bill-119",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 2 amounts, 6 codes all traced to findings",
+      "note": "",
+      "seconds": 10.894
+    },
+    {
+      "bill": "bill-120",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 4 amounts, 0 codes all traced to findings",
+      "note": "",
+      "seconds": 9.382
+    },
+    {
+      "bill": "bill-121",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 3 amounts, 1 codes all traced to findings",
+      "note": "",
+      "seconds": 10.89
+    },
+    {
+      "bill": "bill-122",
+      "aiError": "",
+      "source": "in_cloud",
+      "gatePass": true,
+      "factCheck": "PASSED: 2 amounts, 2 codes all traced to findings",
+      "note": "",
+      "seconds": 2.335
+    }
+  ]
+}

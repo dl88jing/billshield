@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-14T12:01:18.186Z",
+  "generatedAt": "2026-11-14T12:30:32.729Z",
   "mode": "rules-only (no model)",
   "bills": 40,
-  "runtimeMs": 10,
+  "runtimeMs": 11,
   "rules": [
     {
       "rule": "DUPLICATE",

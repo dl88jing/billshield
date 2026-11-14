@@ -1,0 +1,15 @@
+rules_version = '2';
+// BillShield stores ONLY anonymous aggregate run stats. No reads from clients, no bill content.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /aggregate_runs/{id} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['rules','stakeBucket','deviceSource','letterSource','gatePass','v','at'])
+        && request.resource.data.rules is map && request.resource.data.rules.size() <= 10
+        && request.resource.data.stakeBucket is string && request.resource.data.stakeBucket.size() < 16
+        && request.resource.data.gatePass is bool
+        && request.resource.data.at == request.time;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

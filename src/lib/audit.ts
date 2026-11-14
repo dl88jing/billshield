@@ -50,7 +50,8 @@ export const OUTLIER_MULTIPLE = 3;
 const toDate = (s: string) => { const [m, d, y] = s.split("/").map(Number); return new Date(y, m - 1, d).getTime(); };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-export function audit(bill: ParsedBill): Finding[] {
+export function audit(bill: ParsedBill, opts: { outlierMultiple?: number } = {}): Finding[] {
+  const OUT = opts.outlierMultiple && opts.outlierMultiple > 1 ? opts.outlierMultiple : OUTLIER_MULTIPLE;
   const f: Finding[] = [];
   const items = bill.items;
 
@@ -92,8 +93,8 @@ export function audit(bill: ParsedBill): Finding[] {
       title: `Charge after discharge: ${it.cpt}`, detail: `Service dated ${it.date}, after discharge on ${bill.discharge}.` });
   // PRICE_OUTLIER: unit price > OUTLIER_MULTIPLE × typical.
   for (const it of items) { const ref = REFERENCE[it.cpt];
-    if (ref && it.unit > ref.typical * OUTLIER_MULTIPLE) f.push({ rule: "PRICE_OUTLIER", lines: [it.line], cpt: it.cpt, atStake: r2((it.unit - ref.typical * OUTLIER_MULTIPLE) * it.qty), severity: "advisory",
-      title: `Price outlier: ${it.cpt}`, detail: `$${it.unit.toFixed(2)} per unit is over ${OUTLIER_MULTIPLE}× a typical $${ref.typical} charge for ${ref.name}. Ask for an itemized justification.` }); }
+    if (ref && it.unit > ref.typical * OUT) f.push({ rule: "PRICE_OUTLIER", lines: [it.line], cpt: it.cpt, atStake: r2((it.unit - ref.typical * OUT) * it.qty), severity: "advisory",
+      title: `Price outlier: ${it.cpt}`, detail: `$${it.unit.toFixed(2)} per unit is over ${OUT}× a typical $${ref.typical} charge for ${ref.name}. Ask for an itemized justification.` }); }
   // TOTAL: stated subtotal must equal the sum of lines.
   const sum = r2(items.reduce((s, x) => s + x.amount, 0));
   if (bill.subtotal !== undefined && Math.abs(sum - bill.subtotal) > 0.01)

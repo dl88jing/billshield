@@ -32,3 +32,19 @@ Please review these items, send me a corrected itemized bill, and place my accou
 Sincerely,
 ${name}`;
 }
+
+export interface LetterCheck { pass: boolean; issues: string[]; amountsChecked: number; codesChecked: number; }
+/** Deterministic check of a model-drafted (still redacted) letter: every $ amount and billing code
+ *  must come from the findings, placeholders must exist in the vault, and no raw identifier may appear. */
+export function checkLetter(letter: string, findings: Finding[], vaultKeys: string[]): LetterCheck {
+  const issues: string[] = [];
+  const allowed = new Set<string>([totalAtStake(findings).toFixed(2)]);
+  for (const f of findings) { allowed.add(f.atStake.toFixed(2)); for (const m of f.detail.matchAll(/\$([\d,]+(?:\.\d{2})?)/g)) allowed.add(Number(m[1].replace(/,/g, "")).toFixed(2)); }
+  const amounts = [...letter.matchAll(/\$\s?([\d,]+(?:\.\d{2})?)/g)].map((m) => Number(m[1].replace(/,/g, "")).toFixed(2));
+  for (const a of amounts) if (!allowed.has(a)) issues.push(`amount $${a} is not in the findings`);
+  const codesAllowed = new Set<string>(findings.flatMap((f) => [f.cpt, ...(f.detail.match(/\b(?:\d{5}|[A-Z]\d{4})\b/g) ?? []), ...(f.title.match(/\b(?:\d{5}|[A-Z]\d{4})\b/g) ?? [])]).filter(Boolean) as string[]);
+  const codes = [...letter.matchAll(/\b(\d{5}|[A-Z]\d{4})\b/g)].map((m) => m[1]).filter((c) => !/^(19|20)\d{3}$/.test(c));
+  for (const c of codes) if (!codesAllowed.has(c)) issues.push(`code ${c} is not in the findings`);
+  for (const ph of letter.match(/\[[A-Z_]+_\d+\]/g) ?? []) if (!vaultKeys.includes(ph)) issues.push(`unknown placeholder ${ph}`);
+  return { pass: issues.length === 0, issues: [...new Set(issues)], amountsChecked: amounts.length, codesChecked: codes.length };
+}

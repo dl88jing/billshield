@@ -16,7 +16,8 @@ A medical bill is the most identity-dense document most people own, and it is al
 5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_IN_CLOUD` drafts the letter from the redacted findings, using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
 6. **Privacy receipt**: shows the exact outbound payload, its byte count and SHA-256, and which inference source handled each step.
 
-## Measured results (rules-only, 40 seeded synthetic bills): see [/eval](https://billshield-kappa.vercel.app/eval)
+## Measured results: see [/eval](https://billshield-kappa.vercel.app/eval)
+**Rules layer** (40 seeded synthetic bills, no model):
 | Metric | Result |
 |---|---|
 | Billing-error rules, precision / recall | 100% / 100% on planted errors (7 rules) |
@@ -24,26 +25,37 @@ A medical bill is the most identity-dense document most people own, and it is al
 | Labeled PII leaked | 0 / 440 |
 | **Free-text PII leaked, rules-only** | **67 / 68 (miss)** |
 
-The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on numbers will be added once measured in desktop Chrome with Nano. The first eval run also exposed 10 false positives (a generator bug and a DOUBLE_EM engine bug); both are documented on /eval and fixed.
-Reproduce: `npm run eval` (writes `public/eval/results.json`) and `npm test`.
+**Cloud letter path** (live site, headless Chrome without Gemini Nano, so `PREFER_ON_DEVICE` falls back to cloud `gemini-3.5-flash-lite` via Firebase AI Logic), 12 bills:
+| Run | Cloud letters accepted | Rejected by fact checker | Call failures | What we learned |
+|---|---|---|---|---|
+| v1 | 4 | 4 | 4 | model invented placeholders (`[DATE_1]`, `[ADDRESS_2]`); 401 App Check errors |
+| v2 | 4 | 2 | 6 | prompt fixed (0 invented placeholders); the 2 rejections were a **checker bug** (whole-dollar `$15`), now fixed |
+| v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
-## Firebase usage
-- `firebase/ai`: `getAI` + `GoogleAIBackend` + `getGenerativeModel` with `InferenceMode.ONLY_ON_DEVICE` (PII) and `InferenceMode.PREFER_IN_CLOUD` (letter); `initializeDeviceModel()` on the click (user activation); `response.inferenceSource` checked and shown. See `src/lib/hybrid.ts`.
-- `firebase/app-check`: `ReCaptchaV3Provider` in production, debug token for local dev.
-- Planned: Remote Config for rule thresholds; Firestore for anonymous aggregate stats only (no bill content).
+The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
+Reproduce: `npm run eval` and `npm test` (8 tests). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+
+## Firebase usage (project `billshield-d2dcb`, Spark plan)
+- **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
+  - Raw bill text → `getGenerativeModel(ai, { mode: InferenceMode.ONLY_ON_DEVICE })`. We deliberately do *not* use `PREFER_ON_DEVICE` here, because it may fall back to the cloud with raw PII. Any response whose `inferenceSource` isn't `on_device` is rejected.
+  - Redacted findings → `InferenceMode.PREFER_ON_DEVICE` with `inCloudParams.model` from Remote Config: Gemini Nano when present, cloud Gemini otherwise. `response.inferenceSource` is shown in the privacy receipt.
+  - `initializeDeviceModel()` is called on the user's click (Chrome user-activation rule).
+  - Model default: `gemini-3.5-flash-lite` rather than `gemini-2.5-flash-lite`, because the Firebase docs say 2.5 Flash requests get rerouted from Dec 1, 2026, before judging.
+- **App Check** (`firebase/app-check`): `ReCaptchaV3Provider` by default; `ReCaptchaEnterpriseProvider` when `NEXT_PUBLIC_APPCHECK_PROVIDER=enterprise`. A token probe runs at startup. If it fails, the AI call is still attempted (retried once without the App Check header) and the failure is shown in the privacy receipt.
+- **Remote Config**: `cloud_model` and `outlier_multiple` (audit threshold), with in-code defaults.
+- **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`.
 
 ## Honest status (Nov 14, 2026)
-- **The live deployment does not have Firebase config yet.** Creating the Firebase project (AI Logic + App Check) needs the owner's Google login, which is pending. Until it is set, the app degrades transparently, and the UI badge says which path ran:
-  - on-device: calls Chrome's `LanguageModel` (Prompt API) directly if available, otherwise **rules-only**;
-  - letter: a **deterministic template** (or Nano on-device if available).
-- The Firebase AI Logic code path is implemented and called at runtime as soon as `NEXT_PUBLIC_FIREBASE_*` is set (see `.env.example`).
-- On-device inference requires desktop Chrome 139+ with Gemini Nano. Headless/CI browsers fall back to rules-only.
+- ✅ Firebase AI Logic is live. The cloud letter path works end to end on https://billshield-kappa.vercel.app (verified in headless Chrome; the receipt shows "Firebase AI Logic · cloud (Gemini)", and the redaction guard passes).
+- ⚠️ **App Check is integrated in code, but registering the web app in the Firebase console is blocked or pending.** The console refused the reCAPTCHA v3 secret field with a permissions message, and Enterprise needs a separate site key. AI Logic enforcement is therefore **off** for now. The exact token-exchange error: `400 FAILED_PRECONDITION: App not registered: 1:597645612259:web:d12f1f8d3f77e3fbdc61d6`. While enforcement was propagating, some AI calls returned `401 Firebase App Check token is invalid`; the app retries once without the header and otherwise falls back to the deterministic template letter.
+- ⚠️ **Firestore aggregate writes fail with `Missing or insufficient permissions`**: the database is in production mode and `firestore.rules` has not been deployed yet. The UI says so; nothing else depends on it.
+- ⚠️ On-device inference requires desktop Chrome 139+ with Gemini Nano. The demo video and evals were recorded in headless Chrome with **no** Nano, so the on-device step shows "skipped / rules-only". That is labeled in the video and the UI.
 - Sample bills are synthetic. Reference prices are illustrative, not a fee schedule. Not legal or medical advice.
 
 ## Run locally
 ```bash
 npm install
-cp .env.example .env.local   # fill Firebase web config; never commit .env.local
+cp .env.example .env.local   # Firebase web config (public client config); .env.local is gitignored
 npm run dev                  # http://localhost:3000 in desktop Chrome
 npm test && npm run eval
 ```

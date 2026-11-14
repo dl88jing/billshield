@@ -1,0 +1,29 @@
+[
+ {
+  "run": "v1",
+  "at": "2026-11-14T12:23:25Z",
+  "n": 12,
+  "cloudLettersAccepted": 4,
+  "rejectedByChecker": 4,
+  "aiCallsFailed": 4,
+  "finding": "Model invented placeholders ([DATE_1], [ADDRESS_2]) in 4 letters; 1 also cited $15.00. The checker rejected them and the template was used. 4 calls failed with 401 'Firebase App Check token is invalid' (App Check enforcement change still propagating; web app not registered in App Check)."
+ },
+ {
+  "run": "v2",
+  "at": "2026-11-14T12:26:22Z",
+  "n": 12,
+  "cloudLettersAccepted": 4,
+  "rejectedByChecker": 2,
+  "aiCallsFailed": 6,
+  "finding": "Prompt tightened (no new placeholders, only quote amounts verbatim): 0 invented placeholders. The 2 rejections ($15.00) were a CHECKER false positive: the finding text says 'a typical $15 charge' without cents. Fixed the checker to accept whole-dollar amounts. 6 calls still failed with the same intermittent 401."
+ },
+ {
+  "run": "v3",
+  "at": "2026-11-14T12:30:06Z",
+  "n": 12,
+  "cloudLettersAccepted": 12,
+  "rejectedByChecker": 0,
+  "aiCallsFailed": 0,
+  "finding": "After the checker fix and a one-retry policy (the retry sends no App Check header): 12/12 letters drafted in the cloud by gemini-3.5-flash-lite, 12/12 passed the fact check, 12/12 redaction-guard passes. Some calls needed the retry after a transient 401 'Firebase App Check token is invalid' while the enforcement change propagated."
+ }
+]

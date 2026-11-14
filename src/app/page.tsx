@@ -4,8 +4,8 @@ import Link from "next/link";
 import { makeBill, DEMO_SEEDS } from "@/lib/samples";
 import { detectPii, acceptModelProposals, redact, leakGate, rehydrate, type PiiSpan, type GateResult } from "@/lib/pii";
 import { parseBill, audit, totalAtStake, type Finding } from "@/lib/audit";
-import { buildPayload, templateLetter } from "@/lib/letter";
-import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, type Capabilities, type ModelResult } from "@/lib/hybrid";
+import { buildPayload, templateLetter, checkLetter, type LetterCheck } from "@/lib/letter";
+import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
 
 type StepState = "idle" | "running" | "done" | "blocked" | "skipped";
 const STEPS = [
@@ -39,12 +39,15 @@ export default function Home() {
   const [receipt, setReceipt] = useState<{ payload: string; bytes: number; hash: string; rawBytes: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [lcheck, setLcheck] = useState<LetterCheck | null>(null);
+  const [fb, setFb] = useState<FirebaseStatus | null>(null);
+  const [store, setStore] = useState<{ ok: boolean; error?: string } | null>(null);
 
-  useEffect(() => { capabilities().then(setCaps); }, []);
+  useEffect(() => { capabilities().then(setCaps); firebaseReady().then((st) => setFb({ ...st, appCheck: { ...st.appCheck }, remoteConfig: { ...st.remoteConfig } })); }, []);
   const set = (k: Key, v: StepState) => setSteps((s) => ({ ...s, [k]: v }));
 
   async function run() {
-    setBusy(true); setFindings(null); setLetter(null); setFinalLetter(""); setReceipt(null); setGate(null); setDevice(null);
+    setBusy(true); setFindings(null); setLetter(null); setFinalLetter(""); setReceipt(null); setGate(null); setDevice(null); setStore(null); setLcheck(null);
     setSteps({ scan: "idle", device: "idle", gate: "idle", audit: "idle", letter: "idle" });
     const warm = warmUpOnDevice((p) => setProgress(p)); // user-activation: started inside the click
 
@@ -64,7 +67,9 @@ export default function Home() {
 
     set("audit", "running");
     const bill = parseBill(text);
-    const f = audit(bill);
+    const st = await firebaseReady();
+    setFb({ ...st, appCheck: { ...st.appCheck }, remoteConfig: { ...st.remoteConfig } });
+    const f = audit(bill, { outlierMultiple: st.remoteConfig.outlierMultiple });
     setFindings(f);
     set("audit", "done");
 
@@ -77,10 +82,20 @@ export default function Home() {
     setReceipt({ payload, bytes: g.checkedBytes, hash: await sha256(payload), rawBytes: new TextEncoder().encode(text).length });
 
     set("letter", "running");
-    const l = await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider));
+    let l = await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider));
+    if (l.source !== "template") {
+      const lc = checkLetter(l.text, f, Object.keys(red.vault));
+      setLcheck(lc);
+      if (!lc.pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", note: `Model letter rejected by the fact checker (${lc.issues.join("; ")}), so the deterministic template was used` };
+    }
+    // final guard: the model output itself must not contain raw identifiers before re-insertion
+    if (!leakGate(l.text, red.vault).pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", note: "Model letter contained an identifier, so the template was used" };
     setLetter(l);
     setFinalLetter(rehydrate(l.text, red.vault)); // identity re-inserted locally, never sent
     set("letter", "done");
+    const counts: Record<string, number> = {}; f.forEach((x) => { counts[x.rule] = (counts[x.rule] ?? 0) + 1; });
+    const t = totalAtStake(f);
+    recordAggregate({ rules: counts, stakeBucket: t === 0 ? "0" : t < 250 ? "<250" : t < 1000 ? "250-1k" : ">=1k", deviceSource: dev.source, letterSource: l.source, gatePass: true }).then(setStore);
     setBusy(false);
   }
 
@@ -100,7 +115,9 @@ export default function Home() {
       </header>
 
       <section data-testid="caps" className="mt-5 flex flex-wrap gap-2 text-xs">
-        <span className={`rounded-full px-3 py-1 ${caps?.firebase ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>Firebase AI Logic: {caps ? (caps.firebase ? "configured (App Check)" : "not configured on this deployment") : "…"}</span>
+        <span className={`rounded-full px-3 py-1 ${caps?.firebase ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>Firebase AI Logic: {caps ? (caps.firebase ? `connected · ${fb?.projectId ?? ""}` : "not configured on this deployment") : "…"}</span>
+        {fb && <span data-testid="appcheck" className={`rounded-full px-3 py-1 ${fb.appCheck.ok ? "bg-emerald-100 text-emerald-900" : fb.appCheck.ok === false ? "bg-amber-100 text-amber-900" : "bg-neutral-200"}`}>App Check ({fb.appCheck.provider}): {fb.appCheck.ok ? "token OK" : fb.appCheck.ok === false ? "no token" : "checking…"}</span>}
+        {fb && <span className="rounded-full bg-neutral-200 px-3 py-1">Cloud model: {fb.remoteConfig.cloudModel}{fb.remoteConfig.ok ? " (Remote Config)" : ""}</span>}
         <span className="rounded-full bg-neutral-200 px-3 py-1">On-device model: {caps?.onDevice ?? "…"}</span>
         {progress !== null && progress < 1 && <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-900">Downloading Gemini Nano {Math.round(progress * 100)}%</span>}
       </section>
@@ -165,7 +182,13 @@ export default function Home() {
                 <dt className="text-neutral-500">Raw bill bytes kept on device</dt><dd className="font-mono">{receipt.rawBytes}</dd>
                 <dt className="text-neutral-500">Bytes eligible to leave device</dt><dd className="font-mono">{receipt.bytes}</dd>
                 <dt className="text-neutral-500">SHA-256 of outbound payload</dt><dd className="break-all font-mono">{receipt.hash.slice(0, 32)}…</dd>
-                <dt className="text-neutral-500">Letter drafted by</dt><dd>{letter ? SOURCE_LABEL[letter.source] : "…"}</dd>
+                <dt className="text-neutral-500">Letter drafted by</dt><dd data-testid="letter-source" data-source={letter?.source ?? ""}>{letter ? SOURCE_LABEL[letter.source] : "…"}{letter?.model ? ` · ${letter.model}` : ""}</dd>
+                <dt className="text-neutral-500">Raw-text scrub ran</dt><dd>{device ? SOURCE_LABEL[device.source] : "…"}</dd>
+                <dt className="text-neutral-500">Redaction guard</dt><dd>{gate?.pass ? "PASSED" : "BLOCKED"}</dd>
+                <dt className="text-neutral-500">App Check</dt><dd data-testid="receipt-appcheck">{fb ? (fb.appCheck.ok ? `token OK (${fb.appCheck.provider})` : `no token (${fb.appCheck.provider}): ${fb.appCheck.error ?? "unknown"}`) : "…"}{letter && letter.source !== "template" && letter.appCheckAttached === false ? " · AI request sent WITHOUT an App Check token (enforcement off; web app registration pending)" : ""}</dd>
+                <dt className="text-neutral-500">Letter fact check</dt><dd data-testid="letter-check">{lcheck ? (lcheck.pass ? `PASSED: ${lcheck.amountsChecked} amounts, ${lcheck.codesChecked} codes all traced to findings` : `REJECTED: ${lcheck.issues.join("; ")}`) : letter?.source === "template" ? "n/a (template)" : "…"}</dd>
+                {letter?.error && (<><dt className="text-neutral-500">AI call error</dt><dd data-testid="ai-error" className="break-words text-red-700">{letter.error}</dd></>)}
+                <dt className="text-neutral-500">Anonymous stats (Firestore)</dt><dd data-testid="store">{store ? (store.ok ? "rule counts + $ bucket saved" : `not saved: ${store.error}`) : "…"}</dd>
               </dl>
               <pre className="mt-3 max-h-[220px] overflow-auto whitespace-pre-wrap rounded-lg bg-neutral-900 p-3 font-mono text-[11px] leading-5 text-emerald-100">{receipt.payload}</pre>
             </>) : <p className="mt-3 text-sm text-neutral-500">Nothing left the device.</p>}
