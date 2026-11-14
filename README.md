@@ -13,8 +13,31 @@ A medical bill is the most identity-dense document most people own, and it is al
 2. **On-device scrub**: Firebase AI Logic `getGenerativeModel(ai, { mode: InferenceMode.ONLY_ON_DEVICE })` (Gemini Nano via Chrome's Prompt API) proposes extra identifiers in free text (spouse names, spelled-out birthdays, oddly formatted phones). We use `ONLY_ON_DEVICE`, **not** `PREFER_ON_DEVICE`, because the latter may fall back to the cloud with raw PII. Responses whose `inferenceSource` is not `on_device` are rejected. Model proposals are only applied if the exact string exists in the bill, so hallucinated edits are impossible.
 3. **Deterministic audit**: 7 rules (`src/lib/audit.ts`): DUPLICATE, MATH (qty × unit), TOTAL (subtotal reconciliation), UNBUNDLE (NCCI-style panel components), DOUBLE_EM, POST_DISCHARGE, PRICE_OUTLIER (advisory). The model never decides what is wrong with the bill.
 4. **Leak gate** (deterministic): the outbound payload is re-scanned with every pattern plus every original identifier. A single hit **blocks the cloud call**.
-5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_IN_CLOUD` drafts the letter from the redacted findings, using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
+5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_ON_DEVICE` drafts the letter from the redacted findings (Gemini Nano if the browser has it, cloud Gemini otherwise), using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
 6. **Privacy receipt**: shows the exact outbound payload, its byte count and SHA-256, and which inference source handled each step.
+
+## Architecture
+```mermaid
+flowchart LR
+  A[Pasted bill text] --> B[1. Rules scan<br/>deterministic PII patterns]
+  B --> C[2. On-device scrub<br/>AI Logic ONLY_ON_DEVICE<br/>Gemini Nano]
+  C --> D[Redact + local vault<br/>never leaves the tab]
+  A --> E[3. Deterministic audit<br/>7 billing rules]
+  D --> F{4. Leak gate<br/>rescan outbound bytes}
+  E --> F
+  F -- pass --> G[5. Letter draft<br/>AI Logic PREFER_ON_DEVICE<br/>Nano, else cloud Gemini]
+  F -- any hit --> X[Cloud call blocked<br/>template letter]
+  G --> H[6. Fact check<br/>amounts + codes trace to findings]
+  H --> I[Re-insert real name/IDs locally]
+  I --> J[Privacy receipt<br/>bytes, SHA-256, inference source]
+  RC[(Remote Config<br/>cloud model, threshold)] -.-> G
+  AC[(App Check)] -.-> G
+  G -.-> FS[(Firestore<br/>anonymous aggregates only)]
+```
+Trust boundary: everything left of the leak gate runs in the browser tab; only the redacted findings payload can reach the cloud model.
+
+## Try it in 30 seconds
+Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, then **Audit privately**. Or locally: `npm install && npm run dev`.
 
 ## Measured results: see [/eval](https://billshield-kappa.vercel.app/eval)
 **Rules layer** (40 seeded synthetic bills, no model):
@@ -33,7 +56,7 @@ A medical bill is the most identity-dense document most people own, and it is al
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (8 tests). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (13 tests, also run in CI). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
