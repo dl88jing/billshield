@@ -9,7 +9,7 @@ export type PiiType =
 export interface PiiSpan { type: PiiType; value: string; start: number; end: number; source: "rules" | "model"; }
 
 const LABELED: Array<[PiiType, RegExp]> = [
-  ["NAME", /(?:Patient|Guarantor|Patient Name|Emergency Contact|Responsible Party)\s*:\s*([A-Z][a-zA-Z'.-]+(?:\s+[A-Z][a-zA-Z'.-]*){1,3})/g],
+  ["NAME", /(?:Patient|Guarantor|Patient Name|Emergency Contact|Responsible Party)\s*:\s*((?!(?:DOB|MRN|SSN)\b)[A-Z][a-zA-Z'.-]+(?: (?!(?:DOB|MRN|SSN)\b)[A-Z][a-zA-Z'.-]*){1,3})/g],
   ["DOB", /(?:DOB|Date of Birth|Birth Date)\s*:\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/gi],
   ["MRN", /(?:MRN|Medical Record(?: No\.?| Number)?)\s*[:#]?\s*([A-Z]{0,4}-?[0-9]{5,10})/gi],
   ["MEMBER_ID", /(?:Member ID|Policy(?: No\.?| Number)?|Subscriber ID|Group No\.?)\s*[:#]?\s*([A-Z0-9]{6,14})/gi],

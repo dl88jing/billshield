@@ -113,7 +113,7 @@ export default function Home() {
               <button key={s.id} data-testid={`sample-${i}`} onClick={() => setText(s.text)} className="rounded-full border border-neutral-300 px-3 py-1 text-xs hover:bg-neutral-100">Sample {i + 1}</button>
             ))}
           </div>
-          <textarea data-testid="bill" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} className="h-[380px] w-full resize-y rounded-lg border border-neutral-200 bg-neutral-50 p-3 font-mono text-[11.5px] leading-5" />
+          <textarea data-testid="bill" wrap="off" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} className="h-[380px] w-full resize-y rounded-lg border border-neutral-200 bg-neutral-50 p-3 font-mono text-[11.5px] leading-5" />
           <p className="mt-2 text-xs text-neutral-500">Samples are synthetic: fictional patients and providers. Paste a text itemized statement to try your own; nothing is uploaded.</p>
           <button data-testid="run" onClick={run} disabled={busy} className="mt-3 w-full rounded-xl bg-emerald-700 py-3 text-base font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{busy ? "Auditing…" : "Audit privately"}</button>
         </div>
@@ -156,7 +156,7 @@ export default function Home() {
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
             <span className="text-sm font-semibold">4 · What the redactor produced ({spans.length} identifiers removed)</span>
-            <pre data-testid="redacted" className="mt-3 max-h-[360px] overflow-auto whitespace-pre-wrap rounded-lg bg-neutral-50 p-3 font-mono text-[11px] leading-5" dangerouslySetInnerHTML={{ __html: redacted.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\[[A-Z_]+_\d+\]/g, (m) => `<span class="ph">${m}</span>`) }} />
+            <pre data-testid="redacted" className="mt-3 max-h-[360px] overflow-auto whitespace-pre rounded-lg bg-neutral-50 p-3 font-mono text-[11px] leading-5" dangerouslySetInnerHTML={{ __html: redacted.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\[[A-Z_]+_\d+\]/g, (m) => `<span class="ph">${m}</span>`) }} />
           </div>
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" data-testid="receipt">
             <span className="text-sm font-semibold">5 · Privacy receipt</span>

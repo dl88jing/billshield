@@ -21,3 +21,10 @@ test("parser reads every line item and audit finds planted errors", () => {
   const b = makeBill(3); const p = parseBill(b.text); assert.ok(p.items.length >= 5);
   const f = audit(p); for (const e of b.truth.errors) assert.ok(f.some((x) => x.rule === e.rule), `${b.id} missed ${e.rule}`);
 });
+test("name capture stops before the DOB label", () => {
+  const s = detectPii("Patient: Noah Abernathy    DOB: 04/22/1955    MRN: MV-0000038");
+  assert.ok(s.some((x) => x.type === "NAME" && x.value === "Noah Abernathy"));
+  assert.ok(!s.some((x) => x.value.includes("DOB") && x.type === "NAME"));
+  const red = redact("Patient: Noah Abernathy    DOB: 04/22/1955", s).redacted;
+  assert.ok(red.includes("DOB:"), red);
+});

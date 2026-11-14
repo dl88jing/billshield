@@ -3,7 +3,7 @@
 **Find overcharges on a medical bill and get a dispute letter, without your name, DOB, MRN or insurance ID ever leaving your device.**
 
 Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/), Web (Chrome) platform.
-Live: https://billshield.vercel.app · Measured results: https://billshield.vercel.app/eval
+Live: https://billshield-kappa.vercel.app · Measured results: https://billshield-kappa.vercel.app/eval
 
 ## Why
 A medical bill is the most identity-dense document most people own, and it is also often wrong (duplicate lines, unbundled lab panels, math errors, charges after discharge). Pasting it into a cloud chatbot means handing over your name, DOB, MRN, member ID and diagnosis. BillShield uses **hybrid inference as a privacy firewall**: the identity-bearing text is handled on-device, and the cloud model only ever sees redacted findings.
@@ -16,7 +16,7 @@ A medical bill is the most identity-dense document most people own, and it is al
 5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_IN_CLOUD` drafts the letter from the redacted findings, using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
 6. **Privacy receipt**: shows the exact outbound payload, its byte count and SHA-256, and which inference source handled each step.
 
-## Measured results (rules-only, 40 seeded synthetic bills): see [/eval](https://billshield.vercel.app/eval)
+## Measured results (rules-only, 40 seeded synthetic bills): see [/eval](https://billshield-kappa.vercel.app/eval)
 | Metric | Result |
 |---|---|
 | Billing-error rules, precision / recall | 100% / 100% on planted errors (7 rules) |
