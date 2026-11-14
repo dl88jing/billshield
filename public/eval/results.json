@@ -1,0 +1,418 @@
+{
+  "generatedAt": "2026-11-14T11:57:54.403Z",
+  "mode": "rules-only (no model)",
+  "bills": 40,
+  "runtimeMs": 10,
+  "rules": [
+    {
+      "rule": "DUPLICATE",
+      "tp": 10,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "MATH",
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "TOTAL",
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "UNBUNDLE",
+      "tp": 10,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "POST_DISCHARGE",
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "PRICE_OUTLIER",
+      "tp": 8,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "DOUBLE_EM",
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    }
+  ],
+  "cleanBills": 11,
+  "cleanBillsFlagged": 0,
+  "totalAtStakeUsd": 13662,
+  "pii": {
+    "labeledTotal": 440,
+    "labeledLeaked": 0,
+    "hardTotal": 68,
+    "hardLeaked": 67,
+    "hardLeakRate": 0.985,
+    "gateBlocks": 0
+  },
+  "misses": [
+    {
+      "bill": "bill-100",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born September ##, ####"
+    },
+    {
+      "bill": "bill-101",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born October #, ####"
+    },
+    {
+      "bill": "bill-102",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Daniel"
+    },
+    {
+      "bill": "bill-102",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-102",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born October ##, ####"
+    },
+    {
+      "bill": "bill-103",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Lucas"
+    },
+    {
+      "bill": "bill-103",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-103",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born October #, ####"
+    },
+    {
+      "bill": "bill-104",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born October ##, ####"
+    },
+    {
+      "bill": "bill-105",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Sofia"
+    },
+    {
+      "bill": "bill-105",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-106",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Aisha"
+    },
+    {
+      "bill": "bill-106",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-107",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Daniel"
+    },
+    {
+      "bill": "bill-107",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-108",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Lucas"
+    },
+    {
+      "bill": "bill-108",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-108",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born November ##, ####"
+    },
+    {
+      "bill": "bill-109",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-109",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born November #, ####"
+    },
+    {
+      "bill": "bill-110",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born November ##, ####"
+    },
+    {
+      "bill": "bill-112",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Daniel"
+    },
+    {
+      "bill": "bill-112",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-112",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born December ##, ####"
+    },
+    {
+      "bill": "bill-113",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Fatima"
+    },
+    {
+      "bill": "bill-113",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-113",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born December ##, ####"
+    },
+    {
+      "bill": "bill-114",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Elena"
+    },
+    {
+      "bill": "bill-114",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-117",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Priya"
+    },
+    {
+      "bill": "bill-117",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-117",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born January ##, ####"
+    },
+    {
+      "bill": "bill-118",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Fatima"
+    },
+    {
+      "bill": "bill-118",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-118",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born January ##, ####"
+    },
+    {
+      "bill": "bill-120",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born January ##, ####"
+    },
+    {
+      "bill": "bill-121",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Aisha"
+    },
+    {
+      "bill": "bill-121",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-122",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Priya"
+    },
+    {
+      "bill": "bill-122",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-123",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born February ##, ####"
+    },
+    {
+      "bill": "bill-125",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born February ##, ####"
+    },
+    {
+      "bill": "bill-126",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Wei"
+    },
+    {
+      "bill": "bill-126",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-127",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born February ##, ####"
+    },
+    {
+      "bill": "bill-128",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Noah"
+    },
+    {
+      "bill": "bill-128",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-128",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born March #, ####"
+    },
+    {
+      "bill": "bill-129",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born March ##, ####"
+    },
+    {
+      "bill": "bill-132",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Priya"
+    },
+    {
+      "bill": "bill-132",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-133",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Noah"
+    },
+    {
+      "bill": "bill-133",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-133",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born April ##, ####"
+    },
+    {
+      "bill": "bill-134",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Kwame"
+    },
+    {
+      "bill": "bill-134",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-134",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born April #, ####"
+    },
+    {
+      "bill": "bill-136",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Wei"
+    },
+    {
+      "bill": "bill-136",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-136",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born April #, ####"
+    },
+    {
+      "bill": "bill-137",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Lucas"
+    },
+    {
+      "bill": "bill-137",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-138",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Noah"
+    },
+    {
+      "bill": "bill-138",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-139",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "Sofia"
+    },
+    {
+      "bill": "bill-139",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "### ### ####"
+    },
+    {
+      "bill": "bill-139",
+      "kind": "PII leak (free-text, rules-only)",
+      "detail": "born May ##, ####"
+    }
+  ],
+  "notes": [
+    "Synthetic, seeded bills (fictional people). Ground truth = planted errors + every PII string written into the bill.",
+    "'Free-text' PII is deliberately written in formats the regex layer does not cover (spaced phone numbers, spelled-out birthdays, spouse first names). These misses are what the on-device Gemini Nano pass is for; model-on numbers will be published separately once measured in Chrome.",
+    "Eval history: the first run (v0.1) produced 10 false positives: 8 DUPLICATE flags on a legit same-code venipuncture decoy (a generator bug that put both draws on the same day) and 2 DOUBLE_EM flags caused by counting an exact duplicate E/M line twice (an engine bug, now fixed: exact duplicates are reported once, under DUPLICATE).",
+    "The leak gate re-checks every outbound payload; gateBlocks counts payloads it would refuse to send."
+  ]
+}
