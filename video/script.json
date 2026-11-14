@@ -1,0 +1,11 @@
+[
+ ["s0_title", "BillShield: private medical bill audits, with hybrid A.I. on Firebase A.I. Logic. Built during the BuildHybridAI submission period, for Web and Chrome."],
+ ["s1_problem", "Medical bills are often wrong, and they are the most identity-dense document most people own. Pasting one into a cloud chatbot hands over your name, birth date, and insurance I.D. BillShield finds the overcharges without that data leaving the browser."],
+ ["s2_hybrid", "Raw bill text only ever goes to Gemini Nano, through Firebase A.I. Logic in only-on-device mode. Not prefer-on-device, which could fall back to the cloud with raw identifiers. A deterministic leak gate rescans every outbound byte. Only redacted findings reach the letter step, which prefers Gemini Nano and falls back to cloud Gemini."],
+ ["s3_audit", "Let's try a synthetic sample bill. One click, then Audit privately. The pipeline runs a rules scan, the on-device scrub, a seven-rule billing audit, and the leak gate. This recording browser has no Gemini Nano, so the on-device step is honestly marked skipped."],
+ ["s4_findings", "The audit is deterministic, so the model never decides what is wrong. Here: a line math error, a duplicate I.V. charge, and a price outlier. Five hundred seventy dollars to dispute."],
+ ["s5_receipt", "Every name and I.D. becomes a placeholder; the real values stay in a vault inside the tab. The privacy receipt shows the exact outbound payload, its size and hash, and the passed leak gate. The letter was drafted by cloud Gemini through Firebase A.I. Logic, with the model set by Remote Config."],
+ ["s6_letter", "A fact checker confirms every amount and billing code traces to a finding. Then the real name and account number are re-inserted locally. Firestore only gets anonymous rule counts."],
+ ["s7_eval", "The eval page publishes measured results, misses included. On forty synthetic bills: one hundred percent precision and recall on planted errors, and zero of four hundred forty labeled identifiers leaked. Without a model, sixty-seven free-text identifiers slip through, the exact gap Gemini Nano closes. On the live cloud path, twelve of twelve letters passed the fact check."],
+ ["s8_outro", "BillShield, by Green Robin Labs. Try it at billshield-kappa dot vercel dot app. The code is open source on GitHub."]
+]
