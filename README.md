@@ -13,7 +13,7 @@ A medical bill is the most identity-dense document most people own, and it is al
 
 ## How it works (end-to-end pipeline, not a chatbot)
 1. **Rules scan** (deterministic): labeled names, DOB, MRN, member/account IDs, SSN, phone, email, address, Luhn-valid card numbers. Every later mention of a labeled name is caught too.
-2. **On-device scrub**: Firebase AI Logic `getGenerativeModel(ai, { mode: InferenceMode.ONLY_ON_DEVICE })` (Gemini Nano via Chrome's Prompt API) proposes extra identifiers in free text (spouse names, spelled-out birthdays, oddly formatted phones). We use `ONLY_ON_DEVICE`, **not** `PREFER_ON_DEVICE`, because the latter may fall back to the cloud with raw PII. Responses whose `inferenceSource` is not `on_device` are rejected. Model proposals are only applied if the exact string exists in the bill, so hallucinated edits are impossible.
+2. **On-device scrub**: Firebase AI Logic `getGenerativeModel(ai, { mode: InferenceMode.ONLY_ON_DEVICE })` (Gemini Nano via Chrome's Prompt API) proposes extra identifiers in free text (spouse names, spelled-out birthdays, oddly formatted phones). We use `ONLY_ON_DEVICE`, **not** `PREFER_ON_DEVICE`, because the latter may fall back to the cloud with raw PII. Responses whose `inferenceSource` is not `on_device` are rejected. Because `ONLY_ON_DEVICE` alone is not enough (in `@firebase/ai` 3.1.0, `getGenerativeModel` only creates the on-device adapter when `LanguageModel` exists, so on a browser without it even `ONLY_ON_DEVICE` requests go to the cloud), the raw-text request is never built unless Chrome reports the model as `available`; `tests/raw-text-guard.test.ts` checks that no network call is made otherwise. Model proposals are only applied if the exact string exists in the bill, so hallucinated edits are impossible.
 3. **Deterministic audit**: 7 rules (`src/lib/audit.ts`): DUPLICATE, MATH (qty × unit), TOTAL (subtotal reconciliation), UNBUNDLE (NCCI-style panel components), DOUBLE_EM, POST_DISCHARGE, PRICE_OUTLIER (advisory). The model never decides what is wrong with the bill.
 4. **Leak gate** (deterministic): the outbound payload is re-scanned with every pattern plus every original identifier. A single hit **blocks the cloud call**.
 5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_ON_DEVICE` drafts the letter from the redacted findings (Gemini Nano if the browser has it, cloud Gemini otherwise), using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
@@ -59,7 +59,7 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (16 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (20 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
