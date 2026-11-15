@@ -6,6 +6,7 @@ import { detectPii, acceptModelProposals, redact, leakGate, rehydrate, type PiiS
 import { parseBill, audit, totalAtStake, type Finding } from "@/lib/audit";
 import { buildPayload, templateLetter, checkLetter, type LetterCheck } from "@/lib/letter";
 import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
+import { buildAggregate } from "@/lib/stats";
 
 type StepState = "idle" | "running" | "done" | "blocked" | "skipped";
 const STEPS = [
@@ -93,9 +94,7 @@ export default function Home() {
     setLetter(l);
     setFinalLetter(rehydrate(l.text, red.vault)); // identity re-inserted locally, never sent
     set("letter", "done");
-    const counts: Record<string, number> = {}; f.forEach((x) => { counts[x.rule] = (counts[x.rule] ?? 0) + 1; });
-    const t = totalAtStake(f);
-    recordAggregate({ rules: counts, stakeBucket: t === 0 ? "0" : t < 250 ? "<250" : t < 1000 ? "250-1k" : ">=1k", deviceSource: dev.source, letterSource: l.source, gatePass: true }).then(setStore);
+    recordAggregate(buildAggregate(f, dev.source, l.source)).then(setStore);
     setBusy(false);
   }
 
