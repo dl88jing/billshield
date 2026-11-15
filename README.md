@@ -1,9 +1,12 @@
 # BillShield: private medical bill audits with hybrid AI
 
+[![ci](https://github.com/dl88jing/billshield/actions/workflows/ci.yml/badge.svg)](https://github.com/dl88jing/billshield/actions/workflows/ci.yml)
+
 **Find overcharges on a medical bill and get a dispute letter, without your name, DOB, MRN or insurance ID ever leaving your device.**
 
 Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/), Web (Chrome) platform.
-Live: https://billshield-kappa.vercel.app · Measured results: https://billshield-kappa.vercel.app/eval
+**Demo video (2:34):** https://youtu.be/5HYzI5j9pMw  
+**Live:** https://billshield-kappa.vercel.app · **Measured results:** https://billshield-kappa.vercel.app/eval
 
 ## Why
 A medical bill is the most identity-dense document most people own, and it is also often wrong (duplicate lines, unbundled lab panels, math errors, charges after discharge). Pasting it into a cloud chatbot means handing over your name, DOB, MRN, member ID and diagnosis. BillShield uses **hybrid inference as a privacy firewall**: the identity-bearing text is handled on-device, and the cloud model only ever sees redacted findings.
@@ -37,7 +40,7 @@ flowchart LR
 Trust boundary: everything left of the leak gate runs in the browser tab; only the redacted findings payload can reach the cloud model.
 
 ## Try it in 30 seconds
-Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, then **Audit privately**. Or locally: `npm install && npm run dev`.
+Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, then **Audit privately**. Or locally: `npm ci && npm run dev`.
 
 ## Measured results: see [/eval](https://billshield-kappa.vercel.app/eval)
 **Rules layer** (40 seeded synthetic bills, no model):
@@ -56,7 +59,7 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (13 tests, also run in CI). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (16 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
@@ -66,21 +69,21 @@ Reproduce: `npm run eval` and `npm test` (13 tests, also run in CI). Cloud eval:
   - Model default: `gemini-3.5-flash-lite` rather than `gemini-2.5-flash-lite`, because the Firebase docs say 2.5 Flash requests get rerouted from Dec 1, 2026, before judging.
 - **App Check** (`firebase/app-check`): `ReCaptchaV3Provider` by default; `ReCaptchaEnterpriseProvider` when `NEXT_PUBLIC_APPCHECK_PROVIDER=enterprise`. A token probe runs at startup. If it fails, the AI call is still attempted (retried once without the App Check header) and the failure is shown in the privacy receipt.
 - **Remote Config**: `cloud_model` and `outlier_multiple` (audit threshold), with in-code defaults.
-- **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`.
+- **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`; a contract test (`tests/firestore-contract.test.ts`) checks that the record the app writes matches the rules' field allow-list and contains no identifiers or exact dollar amounts.
 
-## Honest status (Nov 14, 2026)
+## Honest status (Nov 15, 2026)
 - ✅ Firebase AI Logic is live. The cloud letter path works end to end on https://billshield-kappa.vercel.app (verified in headless Chrome; the receipt shows "Firebase AI Logic · cloud (Gemini)", and the redaction guard passes).
-- ⚠️ **App Check is integrated in code, but registering the web app in the Firebase console is blocked or pending.** The console refused the reCAPTCHA v3 secret field with a permissions message, and Enterprise needs a separate site key. AI Logic enforcement is therefore **off** for now. The exact token-exchange error: `400 FAILED_PRECONDITION: App not registered: 1:597645612259:web:d12f1f8d3f77e3fbdc61d6`. While enforcement was propagating, some AI calls returned `401 Firebase App Check token is invalid`; the app retries once without the header and otherwise falls back to the deterministic template letter.
-- ⚠️ **Firestore aggregate writes fail with `Missing or insufficient permissions`**: the database is in production mode and `firestore.rules` has not been deployed yet. The UI says so; nothing else depends on it.
+- ⚠️ **App Check is integrated in code, but registering the web app in the Firebase console is blocked or pending.** The console refused the reCAPTCHA v3 secret field with a permissions message, and Enterprise needs a separate site key. AI Logic enforcement is therefore **off** for now. The exact token-exchange error (re-checked Nov 15): `400 FAILED_PRECONDITION: App not registered: 1:597645612259:web:d12f1f8d3f77e3fbdc61d6`. While enforcement was propagating, some AI calls returned `401 Firebase App Check token is invalid`; the app retries once without the header and otherwise falls back to the deterministic template letter.
+- ✅ **Firestore aggregate writes work.** Re-verified Nov 15, 2026 on the live site in headless Chrome: the privacy receipt shows "Anonymous stats (Firestore): rule counts + $ bucket saved", and the Firestore Write channel returns 200. Unauthenticated reads of `aggregate_runs` (and any other collection) return `403 PERMISSION_DENIED`, which matches the client read lock in `firestore.rules`. (Earlier on Nov 14, writes failed with `Missing or insufficient permissions`; that is now resolved.)
 - ⚠️ On-device inference requires desktop Chrome 139+ with Gemini Nano. The demo video and evals were recorded in headless Chrome with **no** Nano, so the on-device step shows "skipped / rules-only". That is labeled in the video and the UI.
 - Sample bills are synthetic. Reference prices are illustrative, not a fee schedule. Not legal or medical advice.
 
 ## Run locally
 ```bash
-npm install
+npm ci
 cp .env.example .env.local   # Firebase web config (public client config); .env.local is gitignored
 npm run dev                  # http://localhost:3000 in desktop Chrome
-npm test && npm run eval
+npm test && npm run lint && npx tsc --noEmit && npm run eval
 ```
 
 ## What was built during the submission period
