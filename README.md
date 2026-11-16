@@ -18,6 +18,7 @@ A medical bill is the most identity-dense document most people own, and it is al
 4. **Leak gate** (deterministic): the outbound payload is re-scanned with every pattern plus every original identifier. A single hit **blocks the cloud call**.
 5. **Dispute letter**: Firebase AI Logic `InferenceMode.PREFER_ON_DEVICE` drafts the letter from the redacted findings (Gemini Nano if the browser has it, cloud Gemini otherwise), using placeholders like `[NAME_1]` and `[ACCOUNT_1]`. Real values are re-inserted **locally** from an in-memory vault that never leaves the tab.
 6. **Privacy receipt**: shows the exact outbound payload, its byte count and SHA-256, and which inference source handled each step.
+7. **Installable, works offline (rules-only)**: BillShield is a PWA (`src/app/manifest.ts`, `public/sw.js`). The service worker caches the app shell, so after one visit the rules scan, on-device scrub, leak gate, bill audit and a deterministic template letter all run with the network off. **Cloud letter writing needs a connection**: offline, the app skips the cloud call (and the Firestore stats write) and says so. The service worker never intercepts or caches cross-origin requests (Firebase AI Logic, Firestore, App Check, reCAPTCHA); `tests/pwa.test.ts` checks that, and `scripts/e2e/offline.mjs` reloads the site in headless Chrome with the network off and runs Sample 1.
 
 ## Architecture
 ```mermaid
@@ -59,7 +60,7 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (20 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (24 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
@@ -71,11 +72,12 @@ Reproduce: `npm run eval` and `npm test` (20 tests, also run in CI with lint and
 - **Remote Config**: `cloud_model` and `outlier_multiple` (audit threshold), with in-code defaults.
 - **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`; a contract test (`tests/firestore-contract.test.ts`) checks that the record the app writes matches the rules' field allow-list and contains no identifiers or exact dollar amounts.
 
-## Honest status (Nov 15, 2026)
+## Honest status (Nov 16, 2026)
 - ✅ Firebase AI Logic is live. The cloud letter path works end to end on https://billshield-kappa.vercel.app (verified in headless Chrome; the receipt shows "Firebase AI Logic · cloud (Gemini)", and the redaction guard passes).
 - ⚠️ **App Check is integrated in code, but registering the web app in the Firebase console is blocked or pending.** The console refused the reCAPTCHA v3 secret field with a permissions message, and Enterprise needs a separate site key. AI Logic enforcement is therefore **off** for now. The exact token-exchange error (re-checked Nov 15): `400 FAILED_PRECONDITION: App not registered: 1:597645612259:web:d12f1f8d3f77e3fbdc61d6`. While enforcement was propagating, some AI calls returned `401 Firebase App Check token is invalid`; the app retries once without the header and otherwise falls back to the deterministic template letter.
 - ✅ **Firestore aggregate writes work.** Re-verified Nov 15, 2026 on the live site in headless Chrome: the privacy receipt shows "Anonymous stats (Firestore): rule counts + $ bucket saved", and the Firestore Write channel returns 200. Unauthenticated reads of `aggregate_runs` (and any other collection) return `403 PERMISSION_DENIED`, which matches the client read lock in `firestore.rules`. (Earlier on Nov 14, writes failed with `Missing or insufficient permissions`; that is now resolved.)
 - ⚠️ On-device inference requires desktop Chrome 139+ with Gemini Nano. The demo video and evals were recorded in headless Chrome with **no** Nano, so the on-device step shows "skipped / rules-only". That is labeled in the video and the UI.
+- ✅ **Installable PWA, offline rules-only mode** (Nov 16): headless Chrome confirms the manifest (standalone, 192/512 and maskable icons) and the service worker control the page; with the network switched off, a reload still loads and Sample 1 still yields $380.23 at stake, a passing leak gate, and a template letter with the name re-inserted locally. Offline, there is no cloud letter.
 - Sample bills are synthetic. Reference prices are illustrative, not a fee schedule. Not legal or medical advice.
 
 ## Run locally

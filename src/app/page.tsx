@@ -5,8 +5,9 @@ import { makeBill, DEMO_SEEDS } from "@/lib/samples";
 import { detectPii, acceptModelProposals, redact, leakGate, rehydrate, type PiiSpan, type GateResult } from "@/lib/pii";
 import { parseBill, audit, totalAtStake, type Finding } from "@/lib/audit";
 import { buildPayload, templateLetter, checkLetter, type LetterCheck } from "@/lib/letter";
-import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
+import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, status as fbStatus, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
 import { buildAggregate } from "@/lib/stats";
+import { useOfflineState } from "@/lib/offline";
 
 type StepState = "idle" | "running" | "done" | "blocked" | "skipped";
 const STEPS = [
@@ -43,6 +44,7 @@ export default function Home() {
   const [lcheck, setLcheck] = useState<LetterCheck | null>(null);
   const [fb, setFb] = useState<FirebaseStatus | null>(null);
   const [store, setStore] = useState<{ ok: boolean; error?: string } | null>(null);
+  const net = useOfflineState();
 
   useEffect(() => { capabilities().then(setCaps); firebaseReady().then((st) => setFb({ ...st, appCheck: { ...st.appCheck }, remoteConfig: { ...st.remoteConfig } })); }, []);
   const set = (k: Key, v: StepState) => setSteps((s) => ({ ...s, [k]: v }));
@@ -68,7 +70,9 @@ export default function Home() {
 
     set("audit", "running");
     const bill = parseBill(text);
-    const st = await firebaseReady();
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    // Offline: don't wait on App Check / Remote Config timeouts; use built-in defaults.
+    const st = offline ? fbStatus : await firebaseReady();
     setFb({ ...st, appCheck: { ...st.appCheck }, remoteConfig: { ...st.remoteConfig } });
     const f = audit(bill, { outlierMultiple: st.remoteConfig.outlierMultiple });
     setFindings(f);
@@ -83,7 +87,9 @@ export default function Home() {
     setReceipt({ payload, bytes: g.checkedBytes, hash: await sha256(payload), rawBytes: new TextEncoder().encode(text).length });
 
     set("letter", "running");
-    let l = await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider));
+    let l: ModelResult = offline
+      ? { text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", ms: 0, note: "Offline: cloud letter writing needs a network connection, so the deterministic template was used. Nothing left the device." }
+      : await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider));
     if (l.source !== "template") {
       const lc = checkLetter(l.text, f, Object.keys(red.vault));
       setLcheck(lc);
@@ -94,7 +100,8 @@ export default function Home() {
     setLetter(l);
     setFinalLetter(rehydrate(l.text, red.vault)); // identity re-inserted locally, never sent
     set("letter", "done");
-    recordAggregate(buildAggregate(f, dev.source, l.source)).then(setStore);
+    if (offline) setStore({ ok: false, error: "offline, nothing sent" });
+    else recordAggregate(buildAggregate(f, dev.source, l.source)).then(setStore);
     setBusy(false);
   }
 
@@ -118,6 +125,7 @@ export default function Home() {
         {fb && <span data-testid="appcheck" className={`rounded-full px-3 py-1 ${fb.appCheck.ok ? "bg-emerald-100 text-emerald-900" : fb.appCheck.ok === false ? "bg-amber-100 text-amber-900" : "bg-neutral-200"}`}>App Check ({fb.appCheck.provider}): {fb.appCheck.ok ? "token OK" : fb.appCheck.ok === false ? "no token" : "checking…"}</span>}
         {fb && <span className="rounded-full bg-neutral-200 px-3 py-1">Cloud model: {fb.remoteConfig.cloudModel}{fb.remoteConfig.ok ? " (Remote Config)" : ""}</span>}
         <span className="rounded-full bg-neutral-200 px-3 py-1">On-device model: {caps?.onDevice ?? "…"}</span>
+        {(net.offlineReady || !net.online) && <span data-testid="offline" data-online={net.online ? "1" : "0"} title="Rules scan, on-device scrub, leak gate, bill audit and the template letter run with no network. Cloud letter writing needs a connection." className={`rounded-full px-3 py-1 ${net.online ? "bg-sky-100 text-sky-900" : "bg-amber-100 text-amber-900"}`}>{net.online ? "Works offline (rules-only) · installable" : "Offline: rules-only audit + template letter"}</span>}
         {progress !== null && progress < 1 && <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-900">Downloading Gemini Nano {Math.round(progress * 100)}%</span>}
       </section>
 
