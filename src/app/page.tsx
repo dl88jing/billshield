@@ -4,7 +4,7 @@ import Link from "next/link";
 import { makeBill, DEMO_SEEDS } from "@/lib/samples";
 import { detectPii, acceptModelProposals, redact, leakGate, rehydrate, type PiiSpan, type GateResult } from "@/lib/pii";
 import { parseBill, audit, totalAtStake, type Finding } from "@/lib/audit";
-import { buildPayload, templateLetter, checkLetter, type LetterCheck } from "@/lib/letter";
+import { buildPayload, templateLetter, checkLetter, LETTER_LANGS, type LetterCheck, type LetterLang } from "@/lib/letter";
 import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, status as fbStatus, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
 import { buildAggregate } from "@/lib/stats";
 import { useOfflineState } from "@/lib/offline";
@@ -37,6 +37,7 @@ export default function Home() {
   const [findings, setFindings] = useState<Finding[] | null>(null);
   const [device, setDevice] = useState<(ModelResult & { proposals: string[] }) | null>(null);
   const [letter, setLetter] = useState<ModelResult | null>(null);
+  const [letterLang, setLetterLang] = useState<LetterLang>("en");
   const [finalLetter, setFinalLetter] = useState("");
   const [receipt, setReceipt] = useState<{ payload: string; bytes: number; hash: string; rawBytes: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,6 +46,7 @@ export default function Home() {
   const [fb, setFb] = useState<FirebaseStatus | null>(null);
   const [store, setStore] = useState<{ ok: boolean; error?: string } | null>(null);
   const net = useOfflineState();
+  const [lang, setLang] = useState<LetterLang>("en");
 
   useEffect(() => { capabilities().then(setCaps); firebaseReady().then((st) => setFb({ ...st, appCheck: { ...st.appCheck }, remoteConfig: { ...st.remoteConfig } })); }, []);
   const set = (k: Key, v: StepState) => setSteps((s) => ({ ...s, [k]: v }));
@@ -88,16 +90,16 @@ export default function Home() {
 
     set("letter", "running");
     let l: ModelResult = offline
-      ? { text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", ms: 0, note: "Offline: cloud letter writing needs a network connection, so the deterministic template was used. Nothing left the device." }
-      : await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider));
+      ? { text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", ms: 0, note: "Offline: cloud letter writing needs a network connection, so the deterministic template was used. Nothing left the device." }
+      : await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider, lang), lang);
     if (l.source !== "template") {
       const lc = checkLetter(l.text, f, Object.keys(red.vault));
       setLcheck(lc);
-      if (!lc.pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", note: `Model letter rejected by the fact checker (${lc.issues.join("; ")}), so the deterministic template was used` };
+      if (!lc.pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", note: `Model letter rejected by the fact checker (${lc.issues.join("; ")}), so the deterministic template was used` };
     }
     // final guard: the model output itself must not contain raw identifiers before re-insertion
-    if (!leakGate(l.text, red.vault).pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider), source: "template", note: "Model letter contained an identifier, so the template was used" };
-    setLetter(l);
+    if (!leakGate(l.text, red.vault).pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", note: "Model letter contained an identifier, so the template was used" };
+    setLetter(l); setLetterLang(lang);
     setFinalLetter(rehydrate(l.text, red.vault)); // identity re-inserted locally, never sent
     set("letter", "done");
     if (offline) setStore({ ok: false, error: "offline, nothing sent" });
@@ -139,6 +141,13 @@ export default function Home() {
           </div>
           <textarea data-testid="bill" wrap="off" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} className="h-[380px] w-full resize-y rounded-lg border border-neutral-200 bg-neutral-50 p-3 font-mono text-[11.5px] leading-5" />
           <p className="mt-2 text-xs text-neutral-500">Samples are synthetic: fictional patients and providers. Paste a text itemized statement to try your own; nothing is uploaded.</p>
+          <div className="mt-3 flex items-center gap-2 text-xs" role="radiogroup" aria-label="Letter language">
+            <span className="text-neutral-600">Letter language:</span>
+            {(Object.keys(LETTER_LANGS) as LetterLang[]).map((k) => (
+              <button key={k} role="radio" aria-checked={lang === k} data-testid={`lang-${k}`} onClick={() => setLang(k)} className={`rounded-full border px-3 py-1 ${lang === k ? "border-emerald-700 bg-emerald-700 text-white" : "border-neutral-300 hover:bg-neutral-100"}`}>{LETTER_LANGS[k]}</button>
+            ))}
+            <span className="text-neutral-500">The model only sees placeholders in either language; names are re-inserted on your device.</span>
+          </div>
           <button data-testid="run" onClick={run} disabled={busy} className="mt-3 w-full rounded-xl bg-emerald-700 py-3 text-base font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{busy ? "Auditing…" : "Audit privately"}</button>
         </div>
 
@@ -204,11 +213,11 @@ export default function Home() {
       )}
 
       {finalLetter && (
-        <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" data-testid="letter">
+        <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" data-testid="letter" data-lang={letterLang} lang={letterLang}>
           <div className="flex items-center justify-between"><span className="text-sm font-semibold">6 · Your dispute letter (identity re-inserted locally)</span>
             <div className="flex gap-2">
               <button onClick={() => navigator.clipboard.writeText(finalLetter)} className="rounded-full border px-3 py-1 text-xs">Copy</button>
-              <a download="billshield-dispute-letter.txt" href={`data:text/plain;charset=utf-8,${encodeURIComponent(finalLetter)}`} className="rounded-full bg-neutral-900 px-3 py-1 text-xs text-white">Download</a>
+              <a download={`billshield-dispute-letter${letterLang === "es" ? "-es" : ""}.txt`} href={`data:text/plain;charset=utf-8,${encodeURIComponent(finalLetter)}`} className="rounded-full bg-neutral-900 px-3 py-1 text-xs text-white">Download</a>
             </div></div>
           {letter?.note && <p className="mt-1 text-xs text-amber-700">{letter.note}</p>}
           <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-neutral-50 p-4 text-[13px] leading-6">{finalLetter}</pre>

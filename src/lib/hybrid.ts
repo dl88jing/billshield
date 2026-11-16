@@ -11,6 +11,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider, getToken, type AppCheck } from "firebase/app-check";
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode, type GenerativeModel } from "firebase/ai";
 import { getRemoteConfig, fetchAndActivate, getValue } from "firebase/remote-config";
+import { letterPrompt, type LetterLang } from "./letter";
 import { getFirestore, addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export type Source = "on_device" | "in_cloud" | "chrome_prompt_api" | "rules_only" | "template";
@@ -150,14 +151,9 @@ export async function proposePiiOnDevice(text: string): Promise<ModelResult & { 
   }
 }
 
-const LETTER_PROMPT = (payload: string) => `Write a firm, polite billing dispute letter from a patient to a hospital billing office. Use ONLY the facts below. Keep every placeholder in square brackets that appears below (for example [NAME_1], [ACCOUNT_1]) exactly as written. Do NOT create any new bracketed placeholders (no [DATE], [ADDRESS], [PHONE] etc.); simply omit a date line, addresses and contact details. Only mention dollar amounts and billing codes that appear verbatim in the findings; do not compute new amounts. Cite each finding with its code and dollar amount, request a corrected itemized bill, and ask that the account not be sent to collections while under review. Under 300 words. Plain text, no markdown.
-
-FINDINGS (already redacted on-device):
-${payload}`;
-
 /** Letter drafting from the REDACTED payload only (caller must pass the leak gate first).
  *  Hybrid: PREFER_ON_DEVICE, so Gemini Nano if present, else cloud Gemini via Firebase AI Logic. */
-export async function draftLetter(redactedPayload: string, fallback: () => string): Promise<ModelResult> {
+export async function draftLetter(redactedPayload: string, fallback: () => string, lang: LetterLang = "en"): Promise<ModelResult> {
   const t0 = performance.now();
   await firebaseReady();
   if (!firebaseConfigured) return { text: fallback(), source: "template", ms: performance.now() - t0, note: "Firebase not configured, so the deterministic template was used" };
@@ -165,7 +161,7 @@ export async function draftLetter(redactedPayload: string, fallback: () => strin
     const m = model(InferenceMode.PREFER_ON_DEVICE, withAppCheck)!;
     const lm = chromeLM();
     if (lm && (await lm.availability().catch(() => "unavailable")) === "available") await m.initializeDeviceModel().catch(() => undefined);
-    const r = await m.generateContent(LETTER_PROMPT(redactedPayload));
+    const r = await m.generateContent(letterPrompt(redactedPayload, lang));
     const src = (r.response.inferenceSource as Source) ?? "in_cloud";
     return { text: r.response.text(), source: src, ms: performance.now() - t0, appCheckAttached: withAppCheck, model: src === "in_cloud" ? status.remoteConfig.cloudModel : "Gemini Nano (on-device)" };
   };
