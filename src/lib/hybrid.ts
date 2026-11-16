@@ -5,8 +5,8 @@
 //  - Redacted findings -> InferenceMode.PREFER_ON_DEVICE: Gemini Nano when the browser has it,
 //    otherwise the cloud Gemini model (Remote Config `cloud_model`). Safe because the payload has
 //    already passed the deterministic leak gate.
-// App Check: ReCaptchaV3Provider by default, ReCaptchaEnterpriseProvider when
-// NEXT_PUBLIC_APPCHECK_PROVIDER=enterprise. A token failure is recorded and AI calls are still attempted.
+// App Check: ReCaptchaEnterpriseProvider by default (Google deprecated reCAPTCHA v3 onboarding);
+// ReCaptchaV3Provider when NEXT_PUBLIC_APPCHECK_PROVIDER=v3. A token failure is recorded and AI calls are still attempted.
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider, getToken, type AppCheck } from "firebase/app-check";
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode, type GenerativeModel } from "firebase/ai";
@@ -26,7 +26,7 @@ const cfg = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 export const firebaseConfigured = Boolean(cfg.apiKey && cfg.projectId && cfg.appId);
-export const appCheckProviderName = process.env.NEXT_PUBLIC_APPCHECK_PROVIDER === "enterprise" ? "reCAPTCHA Enterprise" : "reCAPTCHA v3";
+export const appCheckProviderName = process.env.NEXT_PUBLIC_APPCHECK_PROVIDER === "v3" ? "reCAPTCHA v3" : "reCAPTCHA Enterprise";
 
 export interface FirebaseStatus { configured: boolean; projectId?: string; appCheck: { provider: string; ok: boolean | null; error?: string }; remoteConfig: { ok: boolean | null; error?: string; cloudModel: string; outlierMultiple: number }; }
 export const status: FirebaseStatus = {
@@ -45,7 +45,7 @@ function firebase(): FirebaseApp | null {
   try {
     if (process.env.NEXT_PUBLIC_APPCHECK_DEBUG === "true") (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     if (siteKey) {
-      const provider = process.env.NEXT_PUBLIC_APPCHECK_PROVIDER === "enterprise" ? new ReCaptchaEnterpriseProvider(siteKey) : new ReCaptchaV3Provider(siteKey);
+      const provider = process.env.NEXT_PUBLIC_APPCHECK_PROVIDER === "v3" ? new ReCaptchaV3Provider(siteKey) : new ReCaptchaEnterpriseProvider(siteKey);
       appCheck = initializeAppCheck(app, { provider, isTokenAutoRefreshEnabled: true });
     } else { status.appCheck = { ...status.appCheck, ok: false, error: "no site key configured" }; }
   } catch (e) { status.appCheck = { ...status.appCheck, ok: false, error: (e as Error).message }; }
@@ -77,9 +77,9 @@ export function firebaseReady(): Promise<FirebaseStatus> {
   return readyPromise;
 }
 
-// If App Check cannot mint a token (e.g. app not yet registered), the SDK would attach an invalid
-// token header and the backend rejects it even when enforcement is off. In that case AI calls go
-// through a second app instance with no App Check attached, and the receipt says so.
+// If App Check cannot mint a token, the SDK would attach an invalid token header and the backend
+// may reject it even when enforcement is off. In that case AI calls go through a second app
+// instance with no App Check attached, and the receipt says so.
 let bareApp: FirebaseApp | null = null;
 function aiApp(withAppCheck: boolean): FirebaseApp | null {
   const a = firebase(); if (!a) return null;
