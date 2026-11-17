@@ -81,7 +81,7 @@ export default function Home() {
     set("audit", "done");
 
     set("gate", "running");
-    const payload = buildPayload(f, Object.keys(red.vault), bill.provider);
+    const payload = buildPayload(f, Object.keys(red.vault), bill.provider, lang);
     const g = leakGate(payload, red.vault);
     setGate(g);
     if (!g.pass) { set("gate", "blocked"); set("letter", "skipped"); setBusy(false); return; }
@@ -146,7 +146,7 @@ export default function Home() {
             {(Object.keys(LETTER_LANGS) as LetterLang[]).map((k) => (
               <button key={k} role="radio" aria-checked={lang === k} data-testid={`lang-${k}`} onClick={() => setLang(k)} className={`rounded-full border px-3 py-1 ${lang === k ? "border-emerald-700 bg-emerald-700 text-white" : "border-neutral-300 hover:bg-neutral-100"}`}>{LETTER_LANGS[k]}</button>
             ))}
-            <span className="text-neutral-500">The model only sees placeholders in either language; names are re-inserted on your device.</span>
+            <span className="text-neutral-500">The model only sees placeholders in every language; names are re-inserted on your device.</span>
           </div>
           <button data-testid="run" onClick={run} disabled={busy} className="mt-3 w-full rounded-xl bg-emerald-700 py-3 text-base font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{busy ? "Auditing…" : "Audit privately"}</button>
         </div>
@@ -217,7 +217,7 @@ export default function Home() {
           <div className="flex items-center justify-between"><span className="text-sm font-semibold">6 · Your dispute letter (identity re-inserted locally)</span>
             <div className="flex gap-2">
               <button onClick={() => navigator.clipboard.writeText(finalLetter)} className="rounded-full border px-3 py-1 text-xs">Copy</button>
-              <a download={`billshield-dispute-letter${letterLang === "es" ? "-es" : ""}.txt`} href={`data:text/plain;charset=utf-8,${encodeURIComponent(finalLetter)}`} className="rounded-full bg-neutral-900 px-3 py-1 text-xs text-white">Download</a>
+              <a download={`billshield-dispute-letter${letterLang === "en" ? "" : `-${letterLang}`}.txt`} href={`data:text/plain;charset=utf-8,${encodeURIComponent(finalLetter)}`} className="rounded-full bg-neutral-900 px-3 py-1 text-xs text-white">Download</a>
             </div></div>
           {letter?.note && <p className="mt-1 text-xs text-amber-700">{letter.note}</p>}
           <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-neutral-50 p-4 text-[13px] leading-6">{finalLetter}</pre>

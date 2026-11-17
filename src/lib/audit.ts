@@ -4,7 +4,9 @@ export interface LineItem { line: number; date: string; cpt: string; description
 export interface ParsedBill { items: LineItem[]; subtotal?: number; totalDue?: number; admission?: string; discharge?: string; provider?: string; }
 
 export type RuleId = "DUPLICATE" | "MATH" | "TOTAL" | "UNBUNDLE" | "POST_DISCHARGE" | "PRICE_OUTLIER" | "DOUBLE_EM";
-export interface Finding { rule: RuleId; lines: number[]; cpt?: string; atStake: number; title: string; detail: string; severity: "high" | "medium" | "advisory"; }
+export interface Finding { rule: RuleId; lines: number[]; cpt?: string; atStake: number; title: string; detail: string; severity: "high" | "medium" | "advisory";
+  /** Structured facts behind `detail`, so letters can be localized without re-parsing English text. Never includes identifiers. */
+  facts?: Record<string, string | number>; }
 
 const money = (s: string) => Number(s.replace(/[$,]/g, ""));
 const ITEM = /^\s*(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{5}|[A-Z]\d{4})\s+(.+?)\s+(\d+)\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})\s*$/;
@@ -59,7 +61,7 @@ export function audit(bill: ParsedBill, opts: { outlierMultiple?: number } = {})
   for (const it of items) {
     const expect = r2(it.qty * it.unit);
     if (Math.abs(expect - it.amount) > 0.01) f.push({ rule: "MATH", lines: [it.line], cpt: it.cpt, atStake: r2(Math.max(0, it.amount - expect)), severity: "high",
-      title: `Line math error on ${it.cpt}`, detail: `${it.qty} × $${it.unit.toFixed(2)} = $${expect.toFixed(2)}, but billed $${it.amount.toFixed(2)}.` });
+      title: `Line math error on ${it.cpt}`, detail: `${it.qty} × $${it.unit.toFixed(2)} = $${expect.toFixed(2)}, but billed $${it.amount.toFixed(2)}.`, facts: { qty: it.qty, unit: it.unit, expect, amount: it.amount } });
   }
   // DUPLICATE: same date + code + amount appearing more than once.
   const seen = new Map<string, LineItem>();
@@ -67,7 +69,7 @@ export function audit(bill: ParsedBill, opts: { outlierMultiple?: number } = {})
     const k = `${it.date}|${it.cpt}|${it.amount}`;
     const prev = seen.get(k);
     if (prev) f.push({ rule: "DUPLICATE", lines: [prev.line, it.line], cpt: it.cpt, atStake: it.amount, severity: "high",
-      title: `Possible duplicate charge: ${it.cpt}`, detail: `"${it.description}" billed twice on ${it.date} for $${it.amount.toFixed(2)} each.` });
+      title: `Possible duplicate charge: ${it.cpt}`, detail: `"${it.description}" billed twice on ${it.date} for $${it.amount.toFixed(2)} each.`, facts: { desc: it.description, date: it.date, amount: it.amount } });
     else seen.set(k, it);
   }
   // UNBUNDLE: component test billed on the same date as a panel that includes it.
@@ -75,7 +77,7 @@ export function audit(bill: ParsedBill, opts: { outlierMultiple?: number } = {})
     const panel = PANELS[it.cpt]; if (!panel) continue;
     for (const c of items) if (c.date === it.date && panel.includes.includes(c.cpt))
       f.push({ rule: "UNBUNDLE", lines: [it.line, c.line], cpt: c.cpt, atStake: c.amount, severity: "high",
-        title: `Unbundled lab: ${c.cpt} inside ${it.cpt}`, detail: `${c.cpt} (${c.description}) is a component of the ${panel.name} (${it.cpt}) billed the same day.` });
+        title: `Unbundled lab: ${c.cpt} inside ${it.cpt}`, detail: `${c.cpt} (${c.description}) is a component of the ${panel.name} (${it.cpt}) billed the same day.`, facts: { comp: c.cpt, compDesc: c.description, panel: it.cpt } });
   }
   // DOUBLE_EM: more than one E/M visit code on the same date.
   const emByDate = new Map<string, LineItem[]>();
@@ -85,21 +87,21 @@ export function audit(bill: ParsedBill, opts: { outlierMultiple?: number } = {})
   for (const [date, list] of emByDate) if (list.length > 1) {
     const sorted = [...list].sort((a, b) => b.amount - a.amount);
     f.push({ rule: "DOUBLE_EM", lines: list.map((x) => x.line), cpt: sorted[1].cpt, atStake: sorted.slice(1).reduce((s, x) => s + x.amount, 0), severity: "medium",
-      title: `Multiple visit (E/M) codes on ${date}`, detail: `${list.map((x) => x.cpt).join(" + ")} on the same day; usually only one E/M level is payable per encounter.` });
+      title: `Multiple visit (E/M) codes on ${date}`, detail: `${list.map((x) => x.cpt).join(" + ")} on the same day; usually only one E/M level is payable per encounter.`, facts: { date, codes: list.map((x) => x.cpt).join(" + ") } });
   }
   // POST_DISCHARGE: service after discharge date.
   if (bill.discharge) for (const it of items) if (toDate(it.date) > toDate(bill.discharge))
     f.push({ rule: "POST_DISCHARGE", lines: [it.line], cpt: it.cpt, atStake: it.amount, severity: "high",
-      title: `Charge after discharge: ${it.cpt}`, detail: `Service dated ${it.date}, after discharge on ${bill.discharge}.` });
+      title: `Charge after discharge: ${it.cpt}`, detail: `Service dated ${it.date}, after discharge on ${bill.discharge}.`, facts: { date: it.date, discharge: bill.discharge } });
   // PRICE_OUTLIER: unit price > OUTLIER_MULTIPLE × typical.
   for (const it of items) { const ref = REFERENCE[it.cpt];
     if (ref && it.unit > ref.typical * OUT) f.push({ rule: "PRICE_OUTLIER", lines: [it.line], cpt: it.cpt, atStake: r2((it.unit - ref.typical * OUT) * it.qty), severity: "advisory",
-      title: `Price outlier: ${it.cpt}`, detail: `$${it.unit.toFixed(2)} per unit is over ${OUT}× a typical $${ref.typical} charge for ${ref.name}. Ask for an itemized justification.` }); }
+      title: `Price outlier: ${it.cpt}`, detail: `$${it.unit.toFixed(2)} per unit is over ${OUT}× a typical $${ref.typical} charge for ${ref.name}. Ask for an itemized justification.`, facts: { unit: it.unit, multiple: OUT, typical: ref.typical } }); }
   // TOTAL: stated subtotal must equal the sum of lines.
   const sum = r2(items.reduce((s, x) => s + x.amount, 0));
   if (bill.subtotal !== undefined && Math.abs(sum - bill.subtotal) > 0.01)
     f.push({ rule: "TOTAL", lines: [], atStake: r2(Math.max(0, bill.subtotal - sum)), severity: "high",
-      title: "Subtotal does not match line items", detail: `Lines add to $${sum.toFixed(2)} but the bill states $${bill.subtotal.toFixed(2)}.` });
+      title: "Subtotal does not match line items", detail: `Lines add to $${sum.toFixed(2)} but the bill states $${bill.subtotal.toFixed(2)}.`, facts: { sum, subtotal: bill.subtotal } });
   return f;
 }
 
