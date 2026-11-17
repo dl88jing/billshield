@@ -102,6 +102,14 @@ test("fact checker: full-width ＄ is normalized; money not written as $ US form
   }
 });
 
+test("localized amounts use US thousands separators; prompt tells the model not to copy internal rule tags", () => {
+  const f = { rule: "TOTAL", lines: [], atStake: 160.23, severity: "high", title: "Subtotal does not match line items", detail: "Lines add to $2321.00 but the bill states $2481.23.", facts: { sum: 2321, subtotal: 2481.23 } } as Finding;
+  assert.match(localizedFinding(f, "ja").detail, /\$2,321\.00.*\$2,481\.23/);
+  assert.match(localizedFinding(f, "es").detail, /\$2,321\.00.*\$2,481\.23/);
+  assert.ok(checkLetter(`明細の合計は$2,321.00、小計は$2,481.23です。`, [f], []).pass);
+  for (const lang of ["en", "es", "ja"] as const) assert.match(letterPrompt("x", lang), /do not copy them into the letter/);
+});
+
 test("localDate spells out US statement dates unambiguously", () => {
   assert.equal(localDate("03/04/2026", "es"), "4 de marzo de 2026");
   assert.equal(localDate("03/04/2026", "ja"), "2026年3月4日");

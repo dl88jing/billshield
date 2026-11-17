@@ -6,7 +6,8 @@ import type { Finding, RuleId } from "./audit";
 export type Lang = "en" | "es" | "ja";
 type L10n = Exclude<Lang, "en">;
 
-const usd = (n: number | string | undefined) => `$${Number(n ?? 0).toFixed(2)}`;
+/** US format with thousands separators ($2,321.00), the exact form the prompt asks the model to keep. */
+const usd = (n: number | string | undefined) => `$${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 /** Statement dates are MM/DD/YYYY (US). Spell them out so they are unambiguous in the target language. */

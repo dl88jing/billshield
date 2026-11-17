@@ -61,7 +61,7 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (36 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (37 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
