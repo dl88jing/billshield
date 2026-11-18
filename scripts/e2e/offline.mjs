@@ -26,6 +26,7 @@ await p.waitForSelector("[data-testid=letter]", { timeout: 30000 });
 out.badgeOffline = await p.locator("[data-testid=offline]").innerText().catch(() => null);
 out.stake = await p.locator("[data-testid=stake]").innerText();
 out.gate = await p.locator("[data-testid=gate]").innerText();
+out.gatePass = await p.getAttribute("[data-testid=gate]", "data-pass");
 out.letterSource = await p.getAttribute("[data-testid=letter-source]", "data-source");
 out.letterHasName = !/\[NAME_\d+\]/.test(await p.locator("[data-testid=letter] pre").innerText());
 await p.goto(url + "/eval", { waitUntil: "domcontentloaded" });
@@ -33,5 +34,5 @@ out.evalOfflineTitle = (await p.locator("h1").first().innerText().catch(() => ""
 out.errors = errs;
 console.log(JSON.stringify(out, null, 2));
 await b.close();
-const ok = out.controlled && out.manifest.display === "standalone" && out.letterSource === "template" && /PASSED/.test(out.gate) && out.letterHasName;
+const ok = out.controlled && out.manifest.display === "standalone" && out.letterSource === "template" && out.gatePass === "1" && out.letterHasName;
 process.exit(ok ? 0 : 1);

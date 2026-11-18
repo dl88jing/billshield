@@ -22,6 +22,7 @@ const out = {
   sourceLabel: await p.locator("[data-testid=letter-source]").innerText(),
   factCheck: await p.locator("[data-testid=letter-check]").innerText(),
   gate: await p.locator("[data-testid=gate]").innerText(),
+  gatePass: await p.getAttribute("[data-testid=gate]", "data-pass"),
   stake: await p.locator("[data-testid=stake]").innerText(),
   placeholdersLeft: (letter.match(/\[[A-Z_]+_\d+\]/g) || []).length,
   looksLocalized: LOOKS[lang].test(letter),
@@ -34,4 +35,4 @@ const out = {
 if (process.argv.includes("--shot")) await p.screenshot({ path: `letter-${lang}.png`, fullPage: true });
 console.log(JSON.stringify(out, null, 2));
 await b.close();
-process.exit(out.lang === lang && out.looksLocalized && !out.englishFindingText && out.placeholdersLeft === 0 && /PASSED/.test(out.gate) ? 0 : 1);
+process.exit(out.lang === lang && out.looksLocalized && !out.englishFindingText && out.placeholdersLeft === 0 && out.gatePass === "1" ? 0 : 1);
