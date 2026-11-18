@@ -4,7 +4,7 @@ import Link from "next/link";
 import { makeBill, DEMO_SEEDS } from "@/lib/samples";
 import { detectPii, acceptModelProposals, redact, leakGate, rehydrate, type PiiSpan, type GateResult } from "@/lib/pii";
 import { parseBill, audit, totalAtStake, type Finding } from "@/lib/audit";
-import { buildPayload, templateLetter, checkLetter, LETTER_LANGS, type LetterCheck, type LetterLang } from "@/lib/letter";
+import { buildPayload, templateLetter, checkLetter, stripInternalTags, LETTER_LANGS, type LetterCheck, type LetterLang } from "@/lib/letter";
 import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, status as fbStatus, type Capabilities, type ModelResult, type FirebaseStatus } from "@/lib/hybrid";
 import { buildAggregate } from "@/lib/stats";
 import { useOfflineState } from "@/lib/offline";
@@ -90,6 +90,8 @@ export default function Home() {
     let l: ModelResult = offline
       ? { text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", ms: 0, note: t.noteOffline }
       : await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider, lang), lang);
+    // internal rule tags ([MATH], [DUP], 【RULE】 …) are removed deterministically before the fact check and display
+    if (l.source !== "template") l = { ...l, text: stripInternalTags(l.text).text };
     if (l.source !== "template") {
       const lc = checkLetter(l.text, f, Object.keys(red.vault));
       setLcheck(lc);

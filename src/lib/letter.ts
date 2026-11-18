@@ -1,4 +1,4 @@
-import type { Finding } from "./audit";
+import type { Finding, RuleId } from "./audit";
 import { totalAtStake } from "./audit";
 
 import { localizedFinding, type Lang } from "./i18n";
@@ -104,6 +104,30 @@ ${lines.join("\n")}
 
 敬具
 ${name}`;
+}
+
+// Internal rule labels the audit puts in the payload (e.g. "[MATH]"). The prompt asks the model not to copy them,
+// but that is only a request, so every drafted letter is also cleaned deterministically before the fact check and display.
+const RULE_IDS: readonly RuleId[] = ["DUPLICATE", "MATH", "TOTAL", "UNBUNDLE", "POST_DISCHARGE", "PRICE_OUTLIER", "DOUBLE_EM"];
+const TAG_ALIASES = new Set(["RULE", "RULES", "TAG", "FINDING", "DUP", "DUPE", "DUPLICATES", "UNBUNDLED", "UNBUNDLING", "OUTLIER", "PRICE", "EM", "DOUBLE", "DISCHARGE", "POST", "ADVISORY", "HIGH", "MEDIUM", "LOW"]);
+/** True for an internal label such as MATH, DUP, RULE, RULE: MATH, DOUBLE-EM, Price Outlier.
+ *  Never true for placeholders like NAME_1 (they end in _<digits>) because digits are not allowed. */
+export function isInternalTag(inner: string): boolean {
+  const t = inner.normalize("NFKC").trim().toUpperCase().replace(/^RULE\s*[:_\-\s]\s*/, "").replace(/[\s-]+/g, "_");
+  if (!/^[A-Z][A-Z_]{0,29}$/.test(t)) return false;
+  if ((RULE_IDS as readonly string[]).includes(t) || TAG_ALIASES.has(t)) return true;
+  return t.length >= 3 && RULE_IDS.some((r) => r.startsWith(t)); // abbreviations: DUP, UNB, POST_DIS
+}
+// Square brackets in ASCII, full-width (［］), and the Japanese lenticular/tortoise-shell brackets 【】〔〕.
+const BRACKETED = /[\[［【〔]\s*([^\]］】〕\n]{1,40}?)\s*[\]］】〕][ \t]*[:：\-–—]?[ \t]*/g;
+/** Remove internal rule tags from a drafted letter in any language. Placeholders ([NAME_1], [ACCOUNT_1]) and any other
+ *  bracketed text are left exactly as written so the fact checker still sees them. Returns the removed tags. */
+export function stripInternalTags(letter: string): { text: string; removed: string[] } {
+  const removed: string[] = [];
+  const text = letter
+    .replace(BRACKETED, (m, inner: string) => { if (!isInternalTag(inner)) return m; removed.push(inner.trim()); return ""; })
+    .split("\n").map((line) => line.replace(/(\S)[ \t]{2,}/g, "$1 ").replace(/[ \t]+$/, "")).join("\n");
+  return { text: removed.length ? text : letter, removed };
 }
 
 export interface LetterCheck { pass: boolean; issues: string[]; amountsChecked: number; codesChecked: number; }
