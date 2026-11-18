@@ -6,7 +6,7 @@
     "record": "node record.mjs",
     "vo": "python3 tts.py",
     "compose": "node compose.mjs",
-    "render": "npx --yes hyperframes@0.8.60 render . -o renders/billshield-demo.mp4 --quality=delivery"
+    "render": "npx --yes hyperframes@0.8.60 render . -o renders/billshield-demo-v2.mp4 --quality=delivery"
   },
   "dependencies": { "playwright-core": "^1.50.0" }
 }

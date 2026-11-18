@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=1920, height=1080"/>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Noto+Sans+JP:wght@600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1920px;height:1080px;overflow:hidden;background:#0b1210}
-#root{width:1920px;height:1080px;position:relative;font-family:Inter,system-ui,sans-serif;color:#f5f5f4}
+#root{width:1920px;height:1080px;position:relative;font-family:Inter,"Noto Sans JP",system-ui,sans-serif;color:#f5f5f4}
 video.clip{position:absolute;inset:0;width:1920px;height:1080px;object-fit:cover;background:#f5f5f4}
 .scene{position:absolute;inset:0;background:radial-gradient(1100px 700px at 15% -10%,rgba(16,185,129,.25),transparent 60%),radial-gradient(900px 600px at 105% 110%,rgba(59,130,246,.16),transparent 55%),#0b1210}
 .kicker{position:absolute;left:110px;top:90px;font-size:24px;letter-spacing:.2em;text-transform:uppercase;color:#34d399;font-weight:700}
@@ -42,28 +42,34 @@ h1{position:absolute;left:110px;top:170px;font-size:150px;line-height:1;letter-s
 </style>
 </head>
 <body>
-<div id="root" data-composition-id="main" data-start="0" data-duration="153.947" data-width="1920" data-height="1080" data-fps="30">
+<div id="root" data-composition-id="main" data-start="0" data-duration="174.223" data-width="1920" data-height="1080" data-fps="30">
 
-<video id="v_s1_problem" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="11.332" data-duration="16.744" data-media-start="3.097" data-volume="0" data-track-index="0"></video>
-<div id="cap_s1_problem" class="clip lower" data-start="11.332" data-duration="16.744" data-track-index="3"><div class="pill"><span class="dot"></span>Live app · billshield-kappa.vercel.app</div><div class="pill soft">Firebase AI Logic connected · model from Remote Config</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<video id="v_s3_audit" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="51.455" data-duration="21.709" data-media-start="19.841" data-volume="0" data-track-index="0"></video>
-<div id="cap_s3_audit" class="clip lower" data-start="51.455" data-duration="21.709" data-track-index="3"><div class="pill"><span class="dot"></span>Synthetic sample bill (fictional patient)</div><div class="pill soft">Rules scan → on-device scrub → audit → leak gate</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<video id="v_s4_findings" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="73.164" data-duration="12.624" data-media-start="41.550" data-volume="0" data-track-index="0"></video>
-<div id="cap_s4_findings" class="clip lower" data-start="73.164" data-duration="12.624" data-track-index="3"><div class="pill"><span class="dot"></span>Deterministic audit: 7 billing rules</div><div class="pill soft">Model never decides what is wrong</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<video id="v_s5_receipt" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="85.788" data-duration="19.901" data-media-start="54.174" data-volume="0" data-track-index="0"></video>
-<div id="cap_s5_receipt" class="clip lower" data-start="85.788" data-duration="19.901" data-track-index="3"><div class="pill"><span class="dot"></span>Only redacted findings leave the tab</div><div class="pill soft">Privacy receipt: payload · bytes · SHA-256 · inference source</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<video id="v_s6_letter" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="105.689" data-duration="14.703" data-media-start="74.075" data-volume="0" data-track-index="0"></video>
-<div id="cap_s6_letter" class="clip lower" data-start="105.689" data-duration="14.703" data-track-index="3"><div class="pill"><span class="dot"></span>Letter fact-checked against findings</div><div class="pill soft">Real identity re-inserted locally</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<video id="v_s7_eval" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="120.392" data-duration="22.952" data-media-start="88.778" data-volume="0" data-track-index="0"></video>
-<div id="cap_s7_eval" class="clip lower" data-start="120.392" data-duration="22.952" data-track-index="3"><div class="pill"><span class="dot"></span>/eval · measured results, misses included</div><div class="pill soft">40 synthetic bills · live cloud path 12/12</div><div class="brand">BillShield · #BuildHybridAI</div></div>
-<div id="c0" class="clip scene" data-start="0" data-duration="11.332" data-track-index="0">
+<video id="v_s1_problem_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="6.340" data-duration="22.098" data-media-start="4.561" data-volume="0" data-track-index="0"></video>
+<div id="cap_s1_problem" class="clip lower" data-start="6.34" data-duration="22.098" data-track-index="3"><div class="pill"><span class="dot"></span>Live app · billshield-kappa.vercel.app</div><div class="pill soft">Firebase AI Logic connected · App Check token OK</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s3_audit_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="51.817" data-duration="17.192" data-media-start="26.659" data-volume="0" data-track-index="0"></video>
+<div id="cap_s3_audit" class="clip lower" data-start="51.817" data-duration="17.192" data-track-index="3"><div class="pill"><span class="dot"></span>Synthetic sample bill (fictional patient)</div><div class="pill soft">Rules scan → on-device scrub → audit → leak gate</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s4_findings_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="69.009" data-duration="13.736" data-media-start="43.851" data-volume="0" data-track-index="0"></video>
+<div id="cap_s4_findings" class="clip lower" data-start="69.009" data-duration="13.736" data-track-index="3"><div class="pill"><span class="dot"></span>Deterministic audit: 7 billing rules</div><div class="pill soft">Model never decides what is wrong</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s5_receipt_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="82.745" data-duration="18.472" data-media-start="57.587" data-volume="0" data-track-index="0"></video>
+<div id="cap_s5_receipt" class="clip lower" data-start="82.745" data-duration="18.472" data-track-index="3"><div class="pill"><span class="dot"></span>Only redacted findings leave the tab</div><div class="pill soft">Privacy receipt: payload · bytes · SHA-256 · inference source</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s6_letter_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="101.217" data-duration="8.596" data-media-start="76.059" data-volume="0" data-track-index="0"></video>
+<div id="cap_s6_letter" class="clip lower" data-start="101.217" data-duration="8.596" data-track-index="3"><div class="pill"><span class="dot"></span>Letter fact-checked against findings</div><div class="pill soft">Real identity re-inserted locally</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s7_spanish_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="109.813" data-duration="16.223" data-media-start="84.655" data-volume="0" data-track-index="0"></video>
+<video id="v_s7_spanish_1" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="126.036" data-duration="7.099" data-media-start="102.682" data-volume="0" data-track-index="2"></video>
+<div id="cap_s7_spanish" class="clip lower" data-start="109.813" data-duration="23.322" data-track-index="3"><div class="pill"><span class="dot"></span>UI + letters in Español · follows browser language</div><div class="pill soft">Same leak gate + fact check in every language</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s8_japanese_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="133.135" data-duration="7.412" data-media-start="109.781" data-volume="0" data-track-index="0"></video>
+<video id="v_s8_japanese_1" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="140.547" data-duration="7.003" data-media-start="130.060" data-volume="0" data-track-index="2"></video>
+<div id="cap_s8_japanese" class="clip lower" data-start="133.135" data-duration="14.415" data-track-index="3"><div class="pill"><span class="dot"></span>日本語 · amounts and codes identical across languages</div><div class="pill soft">Findings localized on-device from structured facts</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<video id="v_s9_offline_0" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="147.550" data-duration="17.070" data-media-start="137.063" data-volume="0" data-track-index="0"></video>
+<div id="cap_s9_offline" class="clip lower" data-start="147.55" data-duration="17.07" data-track-index="3"><div class="pill"><span class="dot"></span>Installable PWA · network switched off</div><div class="pill soft">Rules scan · leak gate · audit · template letter, offline</div><div class="brand">BillShield · #BuildHybridAI</div></div>
+<div id="c0" class="clip scene" data-start="0" data-duration="6.34" data-track-index="0">
   <div class="kicker" id="c0k">#BuildHybridAI 2026 · Web (Chrome)</div>
   <h1 id="c0h">BillShield</h1>
   <p class="sub" id="c0s">Private medical bill audits with hybrid AI.<br/>Gemini Nano on-device, Gemini in the cloud, one Firebase AI Logic SDK.</p>
-  <div class="chips" id="c0c"><span>Firebase AI Logic</span><span>App Check</span><span>Remote Config</span><span>Firestore</span></div>
+  <div class="chips" id="c0c"><span>Firebase AI Logic</span><span>App Check</span><span>Remote Config</span><span>Firestore</span><span>EN · ES · 日本語</span><span>Offline PWA</span></div>
   <div class="foot" id="c0f">Green Robin Labs · built during the submission period (Nov 2026) · synthetic data only</div>
 </div>
-<div id="c2" class="clip scene" data-start="28.076" data-duration="23.379" data-track-index="0">
+<div id="c2" class="clip scene" data-start="28.438" data-duration="23.379" data-track-index="0">
   <div class="kicker">The hybrid design: inference as a privacy firewall</div>
   <div class="zone dev" id="zdev"><div class="ztag">IN THE BROWSER TAB</div>
     <div class="box" id="b1"><b>Raw bill text</b><i>name · DOB · MRN · member ID</i></div>
@@ -79,7 +85,7 @@ h1{position:absolute;left:110px;top:170px;font-size:150px;line-height:1;letter-s
     <div class="box" id="b5"><b>Fact check + re-insert identity locally</b><i>placeholders like [NAME_1] stay placeholders in the cloud</i></div>
   </div>
 </div>
-<div id="c8" class="clip scene" data-start="143.344" data-duration="10.603" data-track-index="0">
+<div id="c8" class="clip scene" data-start="164.62" data-duration="9.603" data-track-index="0">
   <div class="cta" id="c8i">
     <div class="kicker" style="position:static">BillShield</div>
     <h1 style="position:static;width:auto;font-size:92px">Audit your bill. Keep your identity.</h1>
@@ -88,20 +94,22 @@ h1{position:absolute;left:110px;top:170px;font-size:150px;line-height:1;letter-s
     <div class="credit">Green Robin Labs · Firebase AI Logic hybrid inference · Web (Chrome)</div>
   </div>
 </div>
-<audio id="a_s0_title" src="assets/vo/s0_title.wav" data-start="0.500" data-duration="10.432" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s1_problem" src="assets/vo/s1_problem.wav" data-start="11.582" data-duration="16.043" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s2_hybrid" src="assets/vo/s2_hybrid.wav" data-start="28.476" data-duration="22.379" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s3_audit" src="assets/vo/s3_audit.wav" data-start="51.705" data-duration="16.149" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s4_findings" src="assets/vo/s4_findings.wav" data-start="73.414" data-duration="11.819" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s5_receipt" src="assets/vo/s5_receipt.wav" data-start="86.038" data-duration="19.2" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s6_letter" src="assets/vo/s6_letter.wav" data-start="105.939" data-duration="11.371" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s7_eval" src="assets/vo/s7_eval.wav" data-start="120.642" data-duration="22.251" data-track-index="1" data-volume="1"></audio>
-<audio id="a_s8_outro" src="assets/vo/s8_outro.wav" data-start="143.744" data-duration="7.403" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s0_title" src="assets/vo/s0_title.wav" data-start="0.500" data-duration="5.44" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s1_problem" src="assets/vo/s1_problem.wav" data-start="6.590" data-duration="21.397" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s2_hybrid" src="assets/vo/s2_hybrid.wav" data-start="28.838" data-duration="22.379" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s3_audit" src="assets/vo/s3_audit.wav" data-start="52.067" data-duration="15.701" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s4_findings" src="assets/vo/s4_findings.wav" data-start="69.259" data-duration="13.013" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s5_receipt" src="assets/vo/s5_receipt.wav" data-start="82.995" data-duration="17.771" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s6_letter" src="assets/vo/s6_letter.wav" data-start="101.467" data-duration="7.893" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s7_spanish" src="assets/vo/s7_spanish.wav" data-start="110.063" data-duration="17.792" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s8_japanese" src="assets/vo/s8_japanese.wav" data-start="133.385" data-duration="7.189" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s9_offline" src="assets/vo/s9_offline.wav" data-start="147.800" data-duration="12.331" data-track-index="1" data-volume="1"></audio>
+<audio id="a_s10_outro" src="assets/vo/s10_outro.wav" data-start="165.020" data-duration="7.403" data-track-index="1" data-volume="1"></audio>
 <script>
 window.__timelines = window.__timelines || {};
 const tl = gsap.timeline({paused:true});
 tl.from("#c0k, #c0h, #c0s, #c0c, #c0f", {opacity:0, y:30, duration:0.8, stagger:0.15, ease:"power2.out"}, 0.15);
-const h = 28.076;
+const h = 28.438;
 tl.from("#zdev", {opacity:0, y:20, duration:0.6}, h + 0.2);
 tl.from("#b1", {opacity:0, x:-30, duration:0.5}, h + 0.6);
 tl.from("#a1, #b2", {opacity:0, x:-30, duration:0.5, stagger:0.2}, h + 2.0);
@@ -109,13 +117,15 @@ tl.from("#a2, #b3", {opacity:0, x:-30, duration:0.5, stagger:0.2}, h + 9.0);
 tl.from("#a3, #zcl", {opacity:0, y:-20, duration:0.6, stagger:0.2}, h + 12.5);
 tl.from("#b4", {opacity:0, x:-30, duration:0.5}, h + 13.3);
 tl.from("#a4, #b5", {opacity:0, x:-30, duration:0.5, stagger:0.2}, h + 17.0);
-tl.from("#cap_s1_problem .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 11.532);
-tl.from("#cap_s3_audit .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 51.655);
-tl.from("#cap_s4_findings .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 73.364);
-tl.from("#cap_s5_receipt .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 85.988);
-tl.from("#cap_s6_letter .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 105.889);
-tl.from("#cap_s7_eval .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 120.592);
-tl.from("#c8i > *", {opacity:0, y:24, duration:0.7, stagger:0.12, ease:"power2.out"}, 143.444);
+tl.from("#cap_s1_problem .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 6.54);
+tl.from("#cap_s3_audit .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 52.017);
+tl.from("#cap_s4_findings .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 69.209);
+tl.from("#cap_s5_receipt .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 82.94500000000001);
+tl.from("#cap_s6_letter .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 101.417);
+tl.from("#cap_s7_spanish .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 110.013);
+tl.from("#cap_s8_japanese .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 133.33499999999998);
+tl.from("#cap_s9_offline .pill", {opacity:0, y:24, duration:0.5, stagger:0.15}, 147.75);
+tl.from("#c8i > *", {opacity:0, y:24, duration:0.7, stagger:0.12, ease:"power2.out"}, 164.72);
 window.__timelines["main"] = tl;
 </script>
 </div>

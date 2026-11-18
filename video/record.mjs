@@ -1,6 +1,6 @@
 /**
  * BillShield demo: one continuous Playwright screen recording of a simulated user on the LIVE app,
- * with a visible cursor overlay. Each scene is held for its Kokoro VO duration (assets/vo/durations.json)
+ * with a visible cursor overlay. v2 (Nov 18): EN -> ES -> JA UI and letters, then offline mode. Each scene is held for its Kokoro VO duration (assets/vo/durations.json)
  * and scene start times are written to assets/screen/marks.json for compose.mjs.
  * Uses only the app's built-in synthetic sample bills. No credentials needed.
  */
@@ -94,33 +94,51 @@ async function scrollBy(page, dy, ms = 1200) {
 const videoDir = path.join(OUT, "_raw");
 fs.rmSync(videoDir, { recursive: true, force: true });
 fs.mkdirSync(videoDir, { recursive: true });
-const browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+// Headed Chrome (run under xvfb-run): headless Chrome gets a 403 from the App Check reCAPTCHA Enterprise exchange.
+const HEADLESS = process.env.HEADLESS === "1";
+const browser = await chromium.launch({ executablePath: CHROME, headless: HEADLESS, args: ["--no-sandbox", "--disable-dev-shm-usage", `--window-size=${VIEW.width},${VIEW.height}`, "--disable-blink-features=AutomationControlled"] });
 const context = await browser.newContext({
-  viewport: VIEW, deviceScaleFactor: 1,
+  viewport: VIEW, deviceScaleFactor: 1, locale: "en-US",
   recordVideo: { dir: videoDir, size: { width: 1920, height: 1080 } },
 });
 await context.addInitScript(CURSOR_JS.replace('__ZOOM__', String(ZOOM)));
 const page = await context.newPage();
 const T0 = Date.now();
 const marks = {};
-const mark = (id) => { marks[id] = (Date.now() - T0) / 1000; console.log("mark", id, marks[id]); };
-const sceneEnd = async (id) => { const left = marks[id] * 1000 + hold(id) - (Date.now() - T0); if (left > 0) await page.waitForTimeout(left); };
+const cuts = [];
+let cutInScene = 0;
+const mark = (id) => { cutInScene = 0; marks[id] = (Date.now() - T0) / 1000; console.log("mark", id, marks[id]); };
+// Cloud waits are recorded but cut out in compose.mjs (cuts.json); sceneEnd adds the cut time back so every
+// scene still runs at least as long as its narration after the cut.
+const sceneEnd = async (id) => { const left = marks[id] * 1000 + hold(id) + cutInScene * 1000 - (Date.now() - T0); cutInScene = 0; if (left > 0) await page.waitForTimeout(left); };
+const now = () => (Date.now() - T0) / 1000;
+const waitCut = async (fn) => { const a = now(); await fn(); const b = now(); if (b - a > 1.6) { cuts.push([+(a + 0.6).toFixed(3), +(b - 0.4).toFixed(3)]); cutInScene += b - a - 1.0; } };
+const letterDone = async () => waitCut(async () => {
+  await page.waitForSelector("[data-testid=letter]", { timeout: 120000 });
+  await page.waitForFunction(() => document.querySelector("[data-testid=letter-check]")?.getAttribute("data-pass") !== "", null, { timeout: 60000 }).catch(() => {});
+});
+const uiLang = async (l) => { await click(page, `[data-testid=ui-lang-${l}]`); await page.waitForFunction((x) => document.querySelector("main")?.getAttribute("data-ui-lang") === x, l, { timeout: 5000 }).catch(() => {}); };
 
-// --- s1: landing, capability pills
+// warm-up (not used in the cut): first visit installs the service worker; reload so the page is controlled
 await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
-await page.waitForFunction(() => !/checking…/.test(document.querySelector('[data-testid=caps]')?.textContent || 'checking…'), null, { timeout: 30000 }).catch(() => {});
+await page.evaluate(async () => { await navigator.serviceWorker?.ready; });
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForFunction(() => document.querySelector("[data-testid=appcheck]")?.getAttribute("data-ok") !== "", null, { timeout: 30000 }).catch(() => {});
+console.log("appcheck:", await page.locator("[data-testid=appcheck]").innerText(), "| offline pill:", await page.locator("[data-testid=offline]").innerText().catch(() => "none"));
 await page.waitForTimeout(800);
+
+// --- s1: landing, capability pills (App Check token OK)
 mark("s1_problem");
 await glide(page, 670, 240, 900);
 await page.waitForTimeout(2500);
-await point(page, "main header p.mt-2", { dx: 0.55, dy: 0.7 });
-await page.waitForTimeout(3500);
+await point(page, "[data-testid=tagline]", { dx: 0.55, dy: 0.7 });
+await page.waitForTimeout(5500);
 await point(page, "[data-testid=caps] span:nth-child(1)");
-await page.waitForTimeout(1600);
-await point(page, "[data-testid=caps] span:last-child");
-await hl(page, "[data-testid=caps]");
-await page.waitForTimeout(2500);
-await hl(page, "[data-testid=caps]", false);
+await page.waitForTimeout(3000);
+await point(page, "[data-testid=appcheck]");
+await hl(page, "[data-testid=appcheck]");
+await page.waitForTimeout(3500);
+await hl(page, "[data-testid=appcheck]", false);
 await sceneEnd("s1_problem");
 
 // --- s3: load synthetic sample, audit privately
@@ -128,16 +146,14 @@ mark("s3_audit");
 await click(page, "[data-testid=sample-0]");
 await page.waitForTimeout(1200);
 await point(page, "[data-testid=bill]", { dx: 0.35, dy: 0.12 });
-await page.waitForTimeout(1500);
-await glide(page, cur.x + 250, cur.y + 50, 900);
 await page.waitForTimeout(800);
 await click(page, "[data-testid=run]");
 await page.waitForTimeout(600);
 for (const k of ["scan", "device", "gate", "audit"]) {
   const s = `[data-testid=step-${k}]`;
-  if (await page.locator(s).count()) { await point(page, s, { dx: 0.3, ms: 600 }); await page.waitForTimeout(900); }
+  if (await page.locator(s).count()) { await point(page, s, { dx: 0.3, ms: 600 }); await page.waitForTimeout(600); }
 }
-const devSel = (await page.locator("[data-testid^=step-][data-state=skipped]").count()) ? "[data-testid^=step-][data-state=skipped]" : "[data-testid^=step-]:nth-child(2)";
+const devSel = (await page.locator("[data-testid^=step-][data-state=skipped]").count()) ? "[data-testid^=step-][data-state=skipped]" : "[data-testid=step-device]";
 await point(page, devSel, { dx: 0.4 });
 await hl(page, devSel);
 await sceneEnd("s3_audit");
@@ -152,25 +168,26 @@ await hl(page, "[data-testid=stake]", false);
 await scrollToSel(page, "[data-testid=findings]", 40);
 const rows = page.locator("[data-testid=findings] tbody tr");
 const n = await rows.count();
-for (let i = 0; i < Math.min(n, 4); i++) { await point(page, `[data-testid=findings] tbody tr:nth-child(${i + 1})`, { dx: 0.25, ms: 650 }); await page.waitForTimeout(1300); }
+for (let i = 0; i < Math.min(n, 4); i++) { await point(page, `[data-testid=findings] tbody tr:nth-child(${i + 1})`, { dx: 0.25, ms: 650 }); await page.waitForTimeout(1500); }
 await sceneEnd("s4_findings");
 
 // --- s5: redacted text + privacy receipt (wait for letter so receipt is complete)
-await page.waitForSelector("[data-testid=letter]", { timeout: 120000 });
-await page.waitForFunction(() => !/…$/.test(document.querySelector('[data-testid=letter-check]')?.textContent || ''), null, { timeout: 60000 }).catch(() => {});
+await letterDone();
 mark("s5_receipt");
 await scrollToSel(page, "[data-testid=redacted]", 90);
 await point(page, "[data-testid=redacted]", { dx: 0.3, dy: 0.1 });
-await page.waitForTimeout(1200);
-await point(page, "[data-testid=redacted]", { dx: 0.5, dy: 0.3 });
 await page.waitForTimeout(1500);
 await point(page, "[data-testid=receipt] dl", { dx: 0.5, dy: 0.12 });
 await page.waitForTimeout(1600);
 await point(page, "[data-testid=receipt] pre", { dx: 0.4, dy: 0.3 });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(1600);
+await point(page, "[data-testid=receipt-appcheck]", { dx: 0.3 });
+await hl(page, "[data-testid=receipt-appcheck]");
+await page.waitForTimeout(2200);
+await hl(page, "[data-testid=receipt-appcheck]", false);
 await point(page, "[data-testid=letter-source]", { dx: 0.3 });
 await hl(page, "[data-testid=letter-source]");
-await page.waitForTimeout(2500);
+await page.waitForTimeout(2200);
 await hl(page, "[data-testid=letter-source]", false);
 await sceneEnd("s5_receipt");
 
@@ -182,29 +199,79 @@ await page.waitForTimeout(2600);
 await hl(page, "[data-testid=letter-check]", false);
 await scrollToSel(page, "[data-testid=letter]", 30);
 await point(page, "[data-testid=letter] pre", { dx: 0.3, dy: 0.1 });
-await page.waitForTimeout(2200);
-await scrollBy(page, 420, 1500);
-await glide(page, cur.x + 190, cur.y + 90, 900);
 await sceneEnd("s6_letter");
 
-// --- s7: /eval page
+// --- s7: switch the UI to Español, audit again -> Spanish letter, same gate + fact check
+mark("s7_spanish");
+await scrollToSel(page, "main header", 20, 900);
+await uiLang("es");
+await page.waitForTimeout(700);
+await point(page, "[data-testid=tagline]", { dx: 0.5, dy: 0.5 });
+await page.waitForTimeout(1300);
+await point(page, "[data-testid=lang-es]");
+await hl(page, "[data-testid=lang-es]");
+await page.waitForTimeout(800);
+await hl(page, "[data-testid=lang-es]", false);
+await click(page, "[data-testid=run]");
+await page.waitForTimeout(600);
+await point(page, "[data-testid=gate]", { dx: 0.4 });
+await scrollToSel(page, "[data-testid=findings]", 40);
+await point(page, "[data-testid=findings] tbody tr:nth-child(1)", { dx: 0.3 });
+await letterDone();
+await scrollToSel(page, "[data-testid=receipt]", 60);
+await point(page, "[data-testid=letter-check]", { dx: 0.3 });
+await hl(page, "[data-testid=letter-check]");
+await page.waitForTimeout(1200);
+await hl(page, "[data-testid=letter-check]", false);
+await scrollToSel(page, "[data-testid=letter]", 30);
+await point(page, "[data-testid=letter] pre", { dx: 0.3, dy: 0.1 });
+await sceneEnd("s7_spanish");
+console.log("es:", await page.locator("[data-testid=gate]").innerText(), "|", await page.locator("[data-testid=letter-check]").innerText());
+
+// --- s8: 日本語
+mark("s8_japanese");
+await scrollToSel(page, "main header", 20, 800);
+await uiLang("ja");
+await click(page, "[data-testid=run]");
+await page.waitForTimeout(400);
+await point(page, "[data-testid=gate]", { dx: 0.4 });
+await letterDone();
+await scrollToSel(page, "[data-testid=receipt]", 60);
+await point(page, "[data-testid=letter-check]", { dx: 0.3 });
+await hl(page, "[data-testid=letter-check]");
+await page.waitForTimeout(1100);
+await hl(page, "[data-testid=letter-check]", false);
+await scrollToSel(page, "[data-testid=letter]", 30);
+await point(page, "[data-testid=letter] pre", { dx: 0.3, dy: 0.15 });
+await sceneEnd("s8_japanese");
+console.log("ja:", await page.locator("[data-testid=gate]").innerText(), "|", await page.locator("[data-testid=letter-check]").innerText());
+
+// --- s9: installable + offline (network switched off; service worker serves the app)
+mark("s9_offline");
 await scrollToSel(page, "main header", 20, 600);
-await point(page, 'a[href="/eval"]');
-mark("s7_eval");
-await page.evaluate(() => window.__bsClick?.());
-await page.locator('a[href="/eval"]').first().click();
-await page.waitForURL(/\/eval/);
-await page.waitForLoadState("networkidle");
-await page.waitForTimeout(900);
-await glide(page, 480, 320, 700);
-await page.waitForTimeout(3200);
-await scrollBy(page, 480, 1500);
-await glide(page, 1120, 530, 800);
-await page.waitForTimeout(3200);
-await page.evaluate(() => { const h = [...document.querySelectorAll('h2')].find((e) => /Cloud letter/i.test(e.textContent)); if (h) h.id = '__cloud'; });
-await scrollToSel(page, "#__cloud", 40, 1800);
-await glide(page, 670, 370, 900);
-await sceneEnd("s7_eval");
+await uiLang("en");
+await point(page, "[data-testid=offline]");
+await hl(page, "[data-testid=offline]");
+await page.waitForTimeout(1000);
+await hl(page, "[data-testid=offline]", false);
+await context.setOffline(true);
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.waitForSelector("[data-testid=run]");
+await page.waitForTimeout(400);
+await point(page, "[data-testid=offline]");
+await hl(page, "[data-testid=offline]");
+await page.waitForTimeout(1200);
+await hl(page, "[data-testid=offline]", false);
+await click(page, "[data-testid=sample-0]");
+await click(page, "[data-testid=run]");
+await page.waitForSelector("[data-testid=letter]", { timeout: 30000 });
+await point(page, "[data-testid=gate]", { dx: 0.4 });
+await page.waitForTimeout(500);
+await scrollToSel(page, "[data-testid=letter]", 30);
+await point(page, "[data-testid=letter] p", { dx: 0.3 });
+await hl(page, "[data-testid=letter]");
+await sceneEnd("s9_offline");
+console.log("offline:", await page.locator("[data-testid=offline]").innerText(), "|", await page.getAttribute("[data-testid=letter-source]", "data-source"));
 mark("end");
 
 await context.close();
@@ -213,6 +280,7 @@ const files = fs.readdirSync(videoDir).filter((f) => f.endsWith(".webm"));
 fs.renameSync(path.join(videoDir, files[0]), path.join(OUT, "session.webm"));
 fs.rmSync(videoDir, { recursive: true, force: true });
 fs.writeFileSync(path.join(OUT, "marks.json"), JSON.stringify(marks, null, 1));
+fs.writeFileSync(path.join(OUT, "cuts.json"), JSON.stringify(cuts));
 const r = spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-i", path.join(OUT, "session.webm"), "-an", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", "-r", "30", path.join(OUT, "session.mp4")], { stdio: "inherit" });
 if (r.status !== 0) throw new Error("ffmpeg failed");
 console.log("saved", path.join(OUT, "session.mp4"), marks);

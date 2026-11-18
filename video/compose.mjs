@@ -1,7 +1,7 @@
 /**
  * Build the HyperFrames composition (index.html) from the Playwright screen recording
  * (assets/screen/session.mp4 + marks.json) and the Kokoro VO (assets/vo/*.wav), then render it.
- *   node compose.mjs            -> writes index.html, renders renders/billshield-demo.mp4
+ *   node compose.mjs            -> writes index.html, renders renders/billshield-demo-v2.mp4
  *   OUT=/path/file.mp4 node compose.mjs  -> also copies the render there
  */
 import fs from "node:fs";
@@ -12,16 +12,28 @@ import { spawnSync } from "node:child_process";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const vo = JSON.parse(fs.readFileSync(path.join(dir, "assets/vo/durations.json"), "utf8"));
 const marks = JSON.parse(fs.readFileSync(path.join(dir, "assets/screen/marks.json"), "utf8"));
-const order = ["s1_problem", "s3_audit", "s4_findings", "s5_receipt", "s6_letter", "s7_eval", "end"];
-const seg = (id) => ({ media: marks[id], dur: marks[order[order.indexOf(id) + 1]] - marks[id] });
+const order = ["s1_problem", "s3_audit", "s4_findings", "s5_receipt", "s6_letter", "s7_spanish", "s8_japanese", "s9_offline", "end"];
+const cutsFile = path.join(dir, "assets/screen/cuts.json");
+const cuts = fs.existsSync(cutsFile) ? JSON.parse(fs.readFileSync(cutsFile, "utf8")) : [];
+// A scene is [mark, next mark] minus any recorded cloud-wait cuts inside it (jump cuts).
+const pieces = (id) => {
+  const a = marks[id], b = marks[order[order.indexOf(id) + 1]];
+  const out = []; let t0 = a;
+  for (const [c0, c1] of cuts.filter(([c0, c1]) => c0 >= a && c1 <= b).sort((x, y) => x[0] - y[0])) { if (c0 > t0) out.push([t0, c0]); t0 = c1; }
+  if (b > t0) out.push([t0, b]);
+  return out;
+};
+const seg = (id) => ({ media: marks[id], pieces: pieces(id), dur: pieces(id).reduce((s, [x, y]) => s + y - x, 0) });
 
 const CAPTIONS = {
-  s1_problem: ["Live app · billshield-kappa.vercel.app", "Firebase AI Logic connected · model from Remote Config"],
+  s1_problem: ["Live app · billshield-kappa.vercel.app", "Firebase AI Logic connected · App Check token OK"],
   s3_audit: ["Synthetic sample bill (fictional patient)", "Rules scan → on-device scrub → audit → leak gate"],
   s4_findings: ["Deterministic audit: 7 billing rules", "Model never decides what is wrong"],
   s5_receipt: ["Only redacted findings leave the tab", "Privacy receipt: payload · bytes · SHA-256 · inference source"],
   s6_letter: ["Letter fact-checked against findings", "Real identity re-inserted locally"],
-  s7_eval: ["/eval · measured results, misses included", "40 synthetic bills · live cloud path 12/12"],
+  s7_spanish: ["UI + letters in Español · follows browser language", "Same leak gate + fact check in every language"],
+  s8_japanese: ["日本語 · amounts and codes identical across languages", "Findings localized on-device from structured facts"],
+  s9_offline: ["Installable PWA · network switched off", "Rules scan · leak gate · audit · template letter, offline"],
 };
 
 // timeline
@@ -29,13 +41,13 @@ const items = [];
 let t = 0;
 const add = (kind, id, dur, extra = {}) => { items.push({ kind, id, start: +t.toFixed(3), dur: +dur.toFixed(3), ...extra }); t += dur; };
 add("card", "s0_title", vo.s0_title + 0.9);
-add("screen", "s1_problem", seg("s1_problem").dur, { media: seg("s1_problem").media });
+add("screen", "s1_problem", seg("s1_problem").dur, { media: seg("s1_problem").media, pieces: seg("s1_problem").pieces });
 add("card", "s2_hybrid", vo.s2_hybrid + 1.0);
-for (const id of ["s3_audit", "s4_findings", "s5_receipt", "s6_letter", "s7_eval"]) add("screen", id, seg(id).dur, { media: seg(id).media });
-add("card", "s8_outro", vo.s8_outro + 3.2);
+for (const id of ["s3_audit", "s4_findings", "s5_receipt", "s6_letter", "s7_spanish", "s8_japanese", "s9_offline"]) add("screen", id, seg(id).dur, { media: seg(id).media, pieces: seg(id).pieces });
+add("card", "s10_outro", vo.s10_outro + 2.2);
 const total = +t.toFixed(3);
 
-const voDelay = { s0_title: 0.5, s2_hybrid: 0.4, s8_outro: 0.4 };
+const voDelay = { s0_title: 0.5, s2_hybrid: 0.4, s10_outro: 0.4 };
 const T = (id) => items.find((i) => i.id === id);
 
 let body = "";
@@ -43,17 +55,17 @@ for (const it of items) {
   if (it.kind === "screen") {
     const [a, b] = CAPTIONS[it.id];
     body += `
-<video id="v_${it.id}" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="${it.start}" data-duration="${it.dur}" data-media-start="${it.media.toFixed(3)}" data-volume="0" data-track-index="0"></video>
+${(() => { let st = it.start; return it.pieces.map(([m0, m1], k) => { const v = `<video id="v_${it.id}_${k}" class="clip" src="assets/screen/session.mp4" muted playsinline data-start="${st.toFixed(3)}" data-duration="${(m1 - m0).toFixed(3)}" data-media-start="${m0.toFixed(3)}" data-volume="0" data-track-index="${k % 2 === 0 ? 0 : 2}"></video>`; st += m1 - m0; return v; }).join("\n"); })()}
 <div id="cap_${it.id}" class="clip lower" data-start="${it.start}" data-duration="${it.dur}" data-track-index="3"><div class="pill"><span class="dot"></span>${a}</div><div class="pill soft">${b}</div><div class="brand">BillShield · #BuildHybridAI</div></div>`;
   }
 }
-const s0 = T("s0_title"), s2 = T("s2_hybrid"), s8 = T("s8_outro");
+const s0 = T("s0_title"), s2 = T("s2_hybrid"), s8 = T("s10_outro");
 body += `
 <div id="c0" class="clip scene" data-start="${s0.start}" data-duration="${s0.dur}" data-track-index="0">
   <div class="kicker" id="c0k">#BuildHybridAI 2026 · Web (Chrome)</div>
   <h1 id="c0h">BillShield</h1>
   <p class="sub" id="c0s">Private medical bill audits with hybrid AI.<br/>Gemini Nano on-device, Gemini in the cloud, one Firebase AI Logic SDK.</p>
-  <div class="chips" id="c0c"><span>Firebase AI Logic</span><span>App Check</span><span>Remote Config</span><span>Firestore</span></div>
+  <div class="chips" id="c0c"><span>Firebase AI Logic</span><span>App Check</span><span>Remote Config</span><span>Firestore</span><span>EN · ES · 日本語</span><span>Offline PWA</span></div>
   <div class="foot" id="c0f">Green Robin Labs · built during the submission period (Nov 2026) · synthetic data only</div>
 </div>
 <div id="c2" class="clip scene" data-start="${s2.start}" data-duration="${s2.dur}" data-track-index="0">
@@ -94,10 +106,10 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=1920, height=1080"/>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Noto+Sans+JP:wght@600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1920px;height:1080px;overflow:hidden;background:#0b1210}
-#root{width:1920px;height:1080px;position:relative;font-family:Inter,system-ui,sans-serif;color:#f5f5f4}
+#root{width:1920px;height:1080px;position:relative;font-family:Inter,"Noto Sans JP",system-ui,sans-serif;color:#f5f5f4}
 video.clip{position:absolute;inset:0;width:1920px;height:1080px;object-fit:cover;background:#f5f5f4}
 .scene{position:absolute;inset:0;background:radial-gradient(1100px 700px at 15% -10%,rgba(16,185,129,.25),transparent 60%),radial-gradient(900px 600px at 105% 110%,rgba(59,130,246,.16),transparent 55%),#0b1210}
 .kicker{position:absolute;left:110px;top:90px;font-size:24px;letter-spacing:.2em;text-transform:uppercase;color:#34d399;font-weight:700}
@@ -157,7 +169,7 @@ fs.writeFileSync(path.join(dir, "index.html"), html);
 console.log("index.html written; total", total, "s");
 console.log(items.map((i) => `${i.id} @${i.start} for ${i.dur}`).join("\n"));
 if (process.env.NO_RENDER) process.exit(0);
-const out = path.join(dir, "renders", "billshield-demo.mp4");
+const out = path.join(dir, "renders", "billshield-demo-v2.mp4");
 fs.mkdirSync(path.dirname(out), { recursive: true });
 const r = spawnSync("npx", ["--yes", "hyperframes@0.8.60", "render", ".", "-o", out, "--quality=delivery"], { cwd: dir, stdio: "inherit" });
 if (r.status !== 0) throw new Error("hyperframes render failed");
