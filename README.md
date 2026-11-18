@@ -6,6 +6,7 @@
 
 Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/), Web (Chrome) platform.
 **Demo video (2:34):** https://youtu.be/5HYzI5j9pMw  
+**Demo video v2 (2:54, adds Español / 日本語 UI and letters, offline mode):** mp4 attached to the [v0.3.0 release](https://github.com/dl88jing/billshield/releases/tag/v0.3.0)  
 **Live:** https://billshield-kappa.vercel.app · **Measured results:** https://billshield-kappa.vercel.app/eval
 
 ## Why
@@ -20,6 +21,7 @@ A medical bill is the most identity-dense document most people own, and it is al
    **English, Spanish or Japanese letters**: pick *Español* or *日本語*. The findings themselves are localized **on-device and deterministically** before anything is sent (`src/lib/i18n.ts`): each finding carries structured `facts` (quantities, unit prices, dates, codes), and the Spanish/Japanese finding sentences, service names and spelled-out dates are built from those facts, so the model never has to translate English finding text and cannot quote it back in English. Billing codes and `$` amounts stay byte-for-byte identical across languages, so the same fact checker and leak gate apply; the fact checker also normalizes full-width characters (`＄１２３` → `$123`) and rejects money written any other way (`1,234.56ドル`, `1.234,56 $`, `120 dólares`), which would otherwise dodge the amount check. The name is re-inserted on-device exactly as in English. If the model letter is rejected, or you're offline, a deterministic Spanish or Japanese template is used. `tests/letter-es.test.ts` and `tests/letter-i18n.test.ts` cover this on all 45 sample bills.
 6. **Privacy receipt**: shows the exact outbound payload, its byte count and SHA-256, and which inference source handled each step.
 7. **Installable, works offline (rules-only)**: BillShield is a PWA (`src/app/manifest.ts`, `public/sw.js`). The service worker caches the app shell, so after one visit the rules scan, on-device scrub, leak gate, bill audit and a deterministic template letter all run with the network off. **Cloud letter writing needs a connection**: offline, the app skips the cloud call (and the Firestore stats write) and says so. The service worker never intercepts or caches cross-origin requests (Firebase AI Logic, Firestore, App Check, reCAPTCHA); `tests/pwa.test.ts` checks that, and `scripts/e2e/offline.mjs` reloads the site in headless Chrome with the network off and runs Sample 1.
+8. **Interface in English, Español and 日本語**: the whole UI (pipeline, findings, privacy receipt, diagnostics) follows `navigator.languages` on first visit; the 🌐 switcher overrides it and the choice is saved in `localStorage` (only the language code, validated on read). Findings are shown with the same on-device localization the letters use. The letter language follows the UI language but can be changed independently, and **the outbound payload depends only on the letter language**, so switching the UI cannot change what leaves the device. Strings live in `src/lib/ui-i18n.ts` (pure data, no I/O); `tests/ui-i18n.test.ts` checks every key exists and renders in all three languages, ES/JA are actually translated, numbers and `$` amounts pass through unchanged, every diagnostic note from `hybrid.ts` has a translation, and the page builds the payload from the letter language. `scripts/e2e/ui-lang.mjs --locale=ja-JP --run` checks locale detection, persistence across reloads and a localized live run.
 
 ## Architecture
 ```mermaid
@@ -61,7 +63,7 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (37 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (44 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
@@ -73,7 +75,7 @@ Reproduce: `npm run eval` and `npm test` (37 tests, also run in CI with lint and
 - **Remote Config**: `cloud_model` and `outlier_multiple` (audit threshold), with in-code defaults.
 - **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`; a contract test (`tests/firestore-contract.test.ts`) checks that the record the app writes matches the rules' field allow-list and contains no identifiers or exact dollar amounts.
 
-## Honest status (Nov 16, 2026)
+## Honest status (Nov 18, 2026)
 - ✅ Firebase AI Logic is live. The cloud letter path works end to end on https://billshield-kappa.vercel.app (verified in headless Chrome; the receipt shows "Firebase AI Logic · cloud (Gemini)", and the redaction guard passes).
 - ✅ **App Check is registered with the reCAPTCHA Enterprise provider.** Verified Nov 16, 2026 on https://billshield-kappa.vercel.app in headless Chrome: the pill reads `App Check (reCAPTCHA Enterprise): token OK`, the privacy receipt reads `token OK (reCAPTCHA Enterprise)`, `exchangeRecaptchaEnterpriseToken` returns 200, and the cloud letter request includes the `X-Firebase-AppCheck` header. The leak gate still reported `0 identifiers in 540 outbound bytes` on Sample 1. **Enforcement is still off.** We use Enterprise because Google deprecated reCAPTCHA v3 onboarding. If a token cannot be minted, the app still retries once without the header and otherwise falls back to the deterministic template letter.
 - ✅ **Firestore aggregate writes work.** Re-verified Nov 15, 2026 on the live site in headless Chrome: the privacy receipt shows "Anonymous stats (Firestore): rule counts + $ bucket saved", and the Firestore Write channel returns 200. Unauthenticated reads of `aggregate_runs` (and any other collection) return `403 PERMISSION_DENIED`, which matches the client read lock in `firestore.rules`. (Earlier on Nov 14, writes failed with `Missing or insufficient permissions`; that is now resolved.)
@@ -81,6 +83,8 @@ Reproduce: `npm run eval` and `npm test` (37 tests, also run in CI with lint and
 - ✅ **Installable PWA, offline rules-only mode** (Nov 16): headless Chrome confirms the manifest (standalone, 192/512 and maskable icons) and the service worker control the page; with the network switched off, a reload still loads and Sample 1 still yields $380.23 at stake, a passing leak gate, and a template letter with the name re-inserted locally. Offline, there is no cloud letter.
 - ✅ **Spanish dispute letters** (Nov 16): the prompt, template, fact check and on-device name re-insertion are unit-tested. The live cloud check is in `scripts/e2e/letters.mjs --lang=es`.
 - ✅ **Japanese letters + localized findings** (Nov 17): Spanish and Japanese payloads and letters no longer contain English finding text; checked live with `scripts/e2e/letters.mjs --lang=ja` / `--lang=es`.
+- ✅ **Localized UI** (Nov 18): live site checked in headless Chrome with `ja-JP`, `es-ES` and `en-US` locales (`scripts/e2e/ui-lang.mjs --run`): the UI opens in the browser language, the switcher choice survives a reload, and a localized run of Sample 1 drafted a cloud letter in that language with the leak gate and the fact check both passing.
+- ⚠️ **App Check in headless Chrome** (Nov 18): `exchangeRecaptchaEnterpriseToken` now returns 403 for headless Chrome (reCAPTCHA Enterprise is score-based), so headless runs show "no token" and the AI call goes out without the header (enforcement is off). Headed Chrome on the same machine gets `token OK`; demo v2 was recorded in headed Chrome (under Xvfb) and shows `token OK`.
 - Sample bills are synthetic. Reference prices are illustrative, not a fee schedule. Not legal or medical advice.
 
 ## Run locally
