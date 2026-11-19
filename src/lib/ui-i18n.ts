@@ -208,3 +208,107 @@ export const UI: Record<Lang, UiStrings> = {
     footer: "法的・医学的助言ではありません。参考価格は例示であり、公式の料金表ではありません。オープンソース（Apache-2.0）· #BuildHybridAI 2026 向けに dl88jing · Green Robin Labs が制作。",
   },
 };
+
+// ---------------------------------------------------------------------------------------------
+// /eval page ("Measured results"). Same rules as above: pure data, no I/O. The measured numbers come
+// from public/eval/*.json and are passed through unchanged; only labels are translated. Free-text
+// measurement notes are shown verbatim (recorded in English) and marked as such, never machine-translated.
+export interface EvalStrings {
+  back: string; title: string;
+  summary: (bills: number, mode: string, generated: string, ms: number) => string;
+  reproduce: string;
+  dateLocale: string;
+  mode: (raw: string) => string;
+  cards: { labeledLeaked: string; freeTextLeaked: string; cleanFlagged: string; disputable: string };
+  rulesTitle: string; thRule: string; thTp: string; thFp: string; thFn: string; thPrecision: string; thRecall: string; na: string;
+  missesTitle: (n: number) => string; missesNote: string;
+  missKind: (raw: string) => string;
+  cloudTitle: string; cloudNote: string;
+  cloudCards: { bills: string; accepted: string; rejected: string; guard: string };
+  pending: string;
+  factCheck: (raw: string) => string;
+  historyTitle: string; historyLine: (accepted: number, rejected: number, failed: number) => string;
+  notesTitle: string; recordedInEnglish: string;
+}
+
+const EVAL_MODES: Record<"es" | "ja", Record<string, string>> = {
+  es: { "rules-only (no model)": "solo reglas (sin modelo)" },
+  ja: { "rules-only (no model)": "ルールのみ（モデルなし）" },
+};
+const EVAL_MISS_KINDS: Record<"es" | "ja", Record<string, string>> = {
+  es: { "PII leak (free-text, rules-only)": "Fuga de datos personales (texto libre, solo reglas)" },
+  ja: { "PII leak (free-text, rules-only)": "個人情報の漏れ（自由記述・ルールのみ）" },
+};
+/** English mode / miss-kind labels that eval.ts can emit; a unit test checks results.json is covered. */
+export const EVAL_MODE_KEYS = Object.keys(EVAL_MODES.es);
+export const EVAL_MISS_KIND_KEYS = Object.keys(EVAL_MISS_KINDS.es);
+const lookup = (map: Record<string, string>) => (raw: string) => map[raw] ?? raw;
+/** Re-render the English fact-check verdict from cloud_eval.mjs ("PASSED: 8 amounts, 6 codes …") in the UI language. */
+const evalFactCheck = (l: Lang) => (raw: string) => {
+  const m = /^PASSED: (\d+) amounts, (\d+) codes all traced to findings$/.exec(raw);
+  if (m) return UI[l].factPassed(Number(m[1]), Number(m[2]));
+  const r = /^REJECTED: (.+)$/.exec(raw);
+  if (r) return UI[l].factRejected(r[1]);
+  return raw;
+};
+
+export const EVAL_UI: Record<Lang, EvalStrings> = {
+  en: {
+    back: "← Back to BillShield", title: "Measured results, misses included",
+    summary: (b, m, g, ms) => `${b} seeded synthetic bills · mode: ${m} · generated ${g} · ${ms} ms total.`,
+    reproduce: "Reproduce with", dateLocale: "en-US", mode: (m) => m,
+    cards: { labeledLeaked: "Labeled PII leaked", freeTextLeaked: "Free-text PII leaked (rules-only)", cleanFlagged: "Clean bills falsely flagged", disputable: "Disputable $ found" },
+    rulesTitle: "Billing-error rules", thRule: "Rule", thTp: "TP", thFp: "FP", thFn: "FN", thPrecision: "Precision", thRecall: "Recall", na: "n/a",
+    missesTitle: (n) => `Every miss (${n})`,
+    missesNote: "The free-text leaks are why BillShield adds an on-device Gemini Nano pass: the regex layer alone misses spaced phone numbers, spelled-out birthdays and first names in notes. Model-on numbers will be added after measuring in Chrome with Nano.",
+    missKind: (k) => k,
+    cloudTitle: "Cloud letter path (Firebase AI Logic, live site)",
+    cloudNote: "Each letter drafted by the cloud model is checked by deterministic code: every dollar amount and billing code must trace to a finding, no new placeholders, no raw identifiers. Anything that fails falls back to the template. Measured with headless Chrome against the live deployment.",
+    cloudCards: { bills: "Bills", accepted: "Cloud letters accepted", rejected: "Rejected by fact checker", guard: "Redaction guard passed" },
+    pending: "Pending re-run.", factCheck: (r) => r,
+    historyTitle: "Run history (what the checker caught)",
+    historyLine: (a, r, f) => `${a} accepted, ${r} rejected, ${f} call failures.`,
+    notesTitle: "Notes", recordedInEnglish: "Measurement notes as recorded.",
+  },
+  es: {
+    back: "← Volver a BillShield", title: "Resultados medidos, fallos incluidos",
+    summary: (b, m, g, ms) => `${b} facturas sintéticas con semilla · modo: ${m} · generado el ${g} · ${ms} ms en total.`,
+    reproduce: "Reprodúcelo con", dateLocale: "es-ES", mode: lookup(EVAL_MODES.es),
+    cards: { labeledLeaked: "Datos personales etiquetados filtrados", freeTextLeaked: "Datos personales en texto libre filtrados (solo reglas)", cleanFlagged: "Facturas correctas marcadas por error", disputable: "Importe reclamable encontrado ($)" },
+    rulesTitle: "Reglas de errores de facturación", thRule: "Regla", thTp: "VP", thFp: "FP", thFn: "FN", thPrecision: "Precisión", thRecall: "Exhaustividad", na: "n/d",
+    missesTitle: (n) => `Todos los fallos (${n})`,
+    missesNote: "Estas fugas en texto libre son la razón por la que BillShield añade una pasada con Gemini Nano en el dispositivo: la capa de expresiones regulares no detecta por sí sola teléfonos con espacios, fechas de nacimiento escritas con letras ni nombres de pila en las notas. Las cifras con el modelo activado se añadirán cuando se midan en Chrome con Nano.",
+    missKind: lookup(EVAL_MISS_KINDS.es),
+    cloudTitle: "Cartas en la nube (Firebase AI Logic, sitio en producción)",
+    cloudNote: "Cada carta redactada por el modelo en la nube la verifica código determinista: cada importe en dólares y cada código de facturación debe corresponder a un hallazgo, sin marcadores nuevos ni identificadores sin anonimizar. Si algo falla, se usa la plantilla. Medido con Chrome headless contra el despliegue en producción.",
+    cloudCards: { bills: "Facturas", accepted: "Cartas de la nube aceptadas", rejected: "Rechazadas por el verificador", guard: "Superaron el control de anonimización" },
+    pending: "Pendiente de una nueva ejecución.", factCheck: evalFactCheck("es"),
+    historyTitle: "Historial de ejecuciones (lo que detectó el verificador)",
+    historyLine: (a, r, f) => `${a} aceptadas, ${r} rechazadas, ${f} llamadas fallidas.`,
+    notesTitle: "Notas", recordedInEnglish: "Notas de medición tal como se registraron (en inglés).",
+  },
+  ja: {
+    back: "← BillShield に戻る", title: "測定結果（見逃しも含めて公開）",
+    summary: (b, m, g, ms) => `シード付き合成請求書 ${b} 件 · モード：${m} · 生成日時 ${g} · 合計 ${ms} ms`,
+    reproduce: "再現コマンド：", dateLocale: "ja-JP", mode: lookup(EVAL_MODES.ja),
+    cards: { labeledLeaked: "ラベル付き個人情報の漏れ", freeTextLeaked: "自由記述の個人情報の漏れ（ルールのみ）", cleanFlagged: "正しい請求書の誤検出", disputable: "異議申立てできる金額（$）" },
+    rulesTitle: "請求ミス検出ルール", thRule: "ルール", thTp: "真陽性", thFp: "偽陽性", thFn: "偽陰性", thPrecision: "適合率", thRecall: "再現率", na: "該当なし",
+    missesTitle: (n) => `すべての見逃し（${n} 件）`,
+    missesNote: "自由記述での漏れがあるからこそ、BillShield は端末上の Gemini Nano による確認を加えています。正規表現だけでは、スペース区切りの電話番号、文字で書かれた生年月日、メモ内の名前を見逃します。モデル有効時の数値は、Nano 搭載の Chrome で測定してから追加します。",
+    missKind: lookup(EVAL_MISS_KINDS.ja),
+    cloudTitle: "クラウドでの申立書作成（Firebase AI Logic・本番サイト）",
+    cloudNote: "クラウドのモデルが作成した申立書は、すべて決定的なコードで検証します。金額と請求コードはすべて指摘事項に対応している必要があり、新しいプレースホルダーや生の識別子は認めません。不合格の場合はテンプレートを使います。本番環境に対してヘッドレス Chrome で測定しました。",
+    cloudCards: { bills: "請求書", accepted: "採用されたクラウドの申立書", rejected: "事実確認で不採用", guard: "匿名化チェック合格" },
+    pending: "再実行待ちです。", factCheck: evalFactCheck("ja"),
+    historyTitle: "実行履歴（チェッカーが検出したもの）",
+    historyLine: (a, r, f) => `採用 ${a} 件、不採用 ${r} 件、呼び出し失敗 ${f} 件。`,
+    notesTitle: "メモ", recordedInEnglish: "測定メモは記録時のまま（英語）表示しています。",
+  },
+};
+
+/** Date/time of an eval run in the UI language, always in UTC so server and client render the same text. */
+export function formatEvalDate(iso: string, l: Lang): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${new Intl.DateTimeFormat(EVAL_UI[l].dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(d)} UTC`;
+}

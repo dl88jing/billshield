@@ -9,8 +9,9 @@ import { capabilities, warmUpOnDevice, proposePiiOnDevice, draftLetter, firebase
 import { buildAggregate } from "@/lib/stats";
 import { useOfflineState } from "@/lib/offline";
 import { localizedFinding } from "@/lib/i18n";
-import { UI, UI_LANGS, UI_LANG_SHORT, type StepKey, type StepState } from "@/lib/ui-i18n";
+import { UI, type StepKey, type StepState } from "@/lib/ui-i18n";
 import { useUiLang } from "@/lib/use-ui-lang";
+import { UiLangSwitch } from "@/components/ui-lang-switch";
 
 const STEP_KEYS: StepKey[] = ["scan", "device", "gate", "audit", "letter"];
 type Key = StepKey;
@@ -118,12 +119,7 @@ export default function Home() {
           <p data-testid="tagline" className="mt-2 max-w-2xl text-[15px] text-neutral-700">{t.tagline[0]}<b>{t.tagline[1]}</b>{t.tagline[2]}</p>
         </div>
         <nav className="flex flex-wrap items-center gap-3 text-sm">
-          <div role="radiogroup" aria-label={t.uiLang} data-testid="ui-lang" className="flex items-center rounded-full border border-neutral-300 bg-white p-0.5 text-xs">
-            <span aria-hidden className="px-2 text-neutral-500">🌐</span>
-            {(Object.keys(UI_LANGS) as LetterLang[]).map((k) => (
-              <button key={k} role="radio" aria-checked={uiLang === k} aria-label={UI_LANGS[k]} title={UI_LANGS[k]} lang={k} data-testid={`ui-lang-${k}`} onClick={() => setUiLang(k)} className={`rounded-full px-3 py-1.5 ${uiLang === k ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"}`}>{UI_LANG_SHORT[k]}</button>
-            ))}
-          </div>
+          <UiLangSwitch lang={uiLang} onChange={setUiLang} />
           <Link href="/eval" className="rounded-full border border-neutral-300 px-4 py-2 hover:bg-white">{t.navEval}</Link>
           <a href="https://github.com/dl88jing/billshield" className="rounded-full bg-neutral-900 px-4 py-2 text-white">GitHub</a>
         </nav>
