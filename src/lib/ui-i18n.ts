@@ -289,7 +289,7 @@ export const EVAL_UI: Record<Lang, EvalStrings> = {
   },
   ja: {
     back: "← BillShield に戻る", title: "測定結果（見逃しも含めて公開）",
-    summary: (b, m, g, ms) => `シード付き合成請求書 ${b} 件 · モード：${m} · 生成日時 ${g} · 合計 ${ms} ms`,
+    summary: (b, m, g, ms) => `シード付き合成請求書 ${b} 件 · モード：${m} · 生成日時 ${g} · 合計 ${ms} ms。`,
     reproduce: "再現コマンド：", dateLocale: "ja-JP", mode: lookup(EVAL_MODES.ja),
     cards: { labeledLeaked: "ラベル付き個人情報の漏れ", freeTextLeaked: "自由記述の個人情報の漏れ（ルールのみ）", cleanFlagged: "正しい請求書の誤検出", disputable: "異議申立てできる金額（$）" },
     rulesTitle: "請求ミス検出ルール", thRule: "ルール", thTp: "真陽性", thFp: "偽陽性", thFn: "偽陰性", thPrecision: "適合率", thRecall: "再現率", na: "該当なし",
