@@ -25,7 +25,8 @@ const cfg = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-export const firebaseConfigured = Boolean(cfg.apiKey && cfg.projectId && cfg.appId);
+import { firebaseConfigured, chromeLM, capabilities, type Capabilities } from "./caps";
+export { firebaseConfigured, capabilities, type Capabilities };
 export const appCheckProviderName = process.env.NEXT_PUBLIC_APPCHECK_PROVIDER === "v3" ? "reCAPTCHA v3" : "reCAPTCHA Enterprise";
 
 export interface FirebaseStatus { configured: boolean; projectId?: string; appCheck: { provider: string; ok: boolean | null; error?: string }; remoteConfig: { ok: boolean | null; error?: string; cloudModel: string; outlierMultiple: number }; }
@@ -96,17 +97,6 @@ function model(mode: InferenceMode, withAppCheck = status.appCheck.ok !== false)
     models[key] = getGenerativeModel(ai, { mode, inCloudParams: { model: status.remoteConfig.cloudModel } });
   }
   return models[key]!;
-}
-
-type LM = { availability: () => Promise<string>; create: (o?: unknown) => Promise<{ prompt: (s: string) => Promise<string>; destroy?: () => void }> };
-const chromeLM = (): LM | null => (typeof self !== "undefined" && (self as unknown as { LanguageModel?: LM }).LanguageModel) || null;
-
-export interface Capabilities { firebase: boolean; onDevice: string; }
-export async function capabilities(): Promise<Capabilities> {
-  const lm = chromeLM();
-  let onDevice = "unavailable (needs desktop Chrome 139+ with Gemini Nano)";
-  if (lm) { try { onDevice = await lm.availability(); } catch { onDevice = "error"; } }
-  return { firebase: firebaseConfigured, onDevice };
 }
 
 /** Must be called from a click handler (Chrome user-activation rule). */

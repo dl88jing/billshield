@@ -65,6 +65,7 @@ const MODEL_NOTES: Record<"es" | "ja", Record<string, string>> = {
     "Firebase not configured: Chrome Prompt API called directly": "Firebase no está configurado: se llamó directamente a la Chrome Prompt API",
     "Firebase not configured, so the deterministic template was used": "Firebase no está configurado, así que se usó la plantilla determinista",
     "Firebase AI Logic call failed, so the deterministic template was used": "La llamada a Firebase AI Logic falló, así que se usó la plantilla determinista",
+    "AI module could not be loaded (offline?), so rules-only scrub used": "No se pudo cargar el módulo de IA (¿sin conexión?), así que se usó solo la limpieza por reglas",
     unreachable: "inalcanzable",
   },
   ja: {
@@ -73,6 +74,7 @@ const MODEL_NOTES: Record<"es" | "ja", Record<string, string>> = {
     "Firebase not configured: Chrome Prompt API called directly": "Firebase 未設定のため、Chrome Prompt API を直接呼び出しました",
     "Firebase not configured, so the deterministic template was used": "Firebase 未設定のため、決定的テンプレートを使用しました",
     "Firebase AI Logic call failed, so the deterministic template was used": "Firebase AI Logic の呼び出しに失敗したため、決定的テンプレートを使用しました",
+    "AI module could not be loaded (offline?), so rules-only scrub used": "AI モジュールを読み込めなかったため（オフライン？）、ルールのみでマスキングしました",
     unreachable: "到達不能",
   },
 };
@@ -222,6 +224,8 @@ export interface EvalStrings {
   cards: { labeledLeaked: string; freeTextLeaked: string; cleanFlagged: string; disputable: string };
   rulesTitle: string; thRule: string; thTp: string; thFp: string; thFn: string; thPrecision: string; thRecall: string; na: string;
   missesTitle: (n: number) => string; missesNote: string;
+  /** Column headers for the misses and cloud tables (visually hidden; read by screen readers). */
+  thBill: string; thKind: string; thDetail: string; thPath: string; thFactCheck: string; thError: string;
   missKind: (raw: string) => string;
   cloudTitle: string; cloudNote: string;
   cloudCards: { bills: string; accepted: string; rejected: string; guard: string };
@@ -258,7 +262,7 @@ export const EVAL_UI: Record<Lang, EvalStrings> = {
     summary: (b, m, g, ms) => `${b} seeded synthetic bills · mode: ${m} · generated ${g} · ${ms} ms total.`,
     reproduce: "Reproduce with", dateLocale: "en-US", mode: (m) => m,
     cards: { labeledLeaked: "Labeled PII leaked", freeTextLeaked: "Free-text PII leaked (rules-only)", cleanFlagged: "Clean bills falsely flagged", disputable: "Disputable $ found" },
-    rulesTitle: "Billing-error rules", thRule: "Rule", thTp: "TP", thFp: "FP", thFn: "FN", thPrecision: "Precision", thRecall: "Recall", na: "n/a",
+    rulesTitle: "Billing-error rules", thRule: "Rule", thTp: "TP", thFp: "FP", thFn: "FN", thPrecision: "Precision", thRecall: "Recall", na: "n/a", thBill: "Bill", thKind: "Kind", thDetail: "Detail", thPath: "Path", thFactCheck: "Fact check", thError: "Error",
     missesTitle: (n) => `Every miss (${n})`,
     missesNote: "The free-text leaks are why BillShield adds an on-device Gemini Nano pass: the regex layer alone misses spaced phone numbers, spelled-out birthdays and first names in notes. Model-on numbers will be added after measuring in Chrome with Nano.",
     missKind: (k) => k,
@@ -275,7 +279,7 @@ export const EVAL_UI: Record<Lang, EvalStrings> = {
     summary: (b, m, g, ms) => `${b} facturas sintéticas con semilla · modo: ${m} · generado el ${g} · ${ms} ms en total.`,
     reproduce: "Reprodúcelo con", dateLocale: "es-ES", mode: lookup(EVAL_MODES.es),
     cards: { labeledLeaked: "Datos personales etiquetados filtrados", freeTextLeaked: "Datos personales en texto libre filtrados (solo reglas)", cleanFlagged: "Facturas correctas marcadas por error", disputable: "Importe reclamable encontrado ($)" },
-    rulesTitle: "Reglas de errores de facturación", thRule: "Regla", thTp: "VP", thFp: "FP", thFn: "FN", thPrecision: "Precisión", thRecall: "Exhaustividad", na: "n/d",
+    rulesTitle: "Reglas de errores de facturación", thRule: "Regla", thTp: "VP", thFp: "FP", thFn: "FN", thPrecision: "Precisión", thRecall: "Exhaustividad", na: "n/d", thBill: "Factura", thKind: "Tipo", thDetail: "Detalle", thPath: "Ruta", thFactCheck: "Verificación", thError: "Fallo",
     missesTitle: (n) => `Todos los fallos (${n})`,
     missesNote: "Estas fugas en texto libre son la razón por la que BillShield añade una pasada con Gemini Nano en el dispositivo: la capa de expresiones regulares no detecta por sí sola teléfonos con espacios, fechas de nacimiento escritas con letras ni nombres de pila en las notas. Las cifras con el modelo activado se añadirán cuando se midan en Chrome con Nano.",
     missKind: lookup(EVAL_MISS_KINDS.es),
@@ -292,7 +296,7 @@ export const EVAL_UI: Record<Lang, EvalStrings> = {
     summary: (b, m, g, ms) => `シード付き合成請求書 ${b} 件 · モード：${m} · 生成日時 ${g} · 合計 ${ms} ms。`,
     reproduce: "再現コマンド：", dateLocale: "ja-JP", mode: lookup(EVAL_MODES.ja),
     cards: { labeledLeaked: "ラベル付き個人情報の漏れ", freeTextLeaked: "自由記述の個人情報の漏れ（ルールのみ）", cleanFlagged: "正しい請求書の誤検出", disputable: "異議申立てできる金額（$）" },
-    rulesTitle: "請求ミス検出ルール", thRule: "ルール", thTp: "真陽性", thFp: "偽陽性", thFn: "偽陰性", thPrecision: "適合率", thRecall: "再現率", na: "該当なし",
+    rulesTitle: "請求ミス検出ルール", thRule: "ルール", thTp: "真陽性", thFp: "偽陽性", thFn: "偽陰性", thPrecision: "適合率", thRecall: "再現率", na: "該当なし", thBill: "請求書", thKind: "種類", thDetail: "詳細", thPath: "経路", thFactCheck: "事実確認", thError: "エラー",
     missesTitle: (n) => `すべての見逃し（${n} 件）`,
     missesNote: "自由記述での漏れがあるからこそ、BillShield は端末上の Gemini Nano による確認を加えています。正規表現だけでは、スペース区切りの電話番号、文字で書かれた生年月日、メモ内の名前を見逃します。モデル有効時の数値は、Nano 搭載の Chrome で測定してから追加します。",
     missKind: lookup(EVAL_MISS_KINDS.ja),
