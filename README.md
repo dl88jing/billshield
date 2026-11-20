@@ -62,7 +62,19 @@ Open https://billshield-kappa.vercel.app in desktop Chrome, click **Sample 1**, 
 | v3 | **12** | 0 | 0 | 12/12 fact-check pass, 12/12 redaction-guard pass (some calls needed one retry) |
 
 The free-text miss is published on purpose: it is exactly what the on-device Gemini Nano pass exists to fix. Model-on (Nano) numbers are not measured yet; they need desktop Chrome with Gemini Nano.
-Reproduce: `npm run eval` and `npm test` (56 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+Reproduce: `npm run eval` and `npm test` (62 tests, also run in CI with lint and typecheck). Cloud eval: `scripts/e2e/cloud_eval.mjs` (Playwright against the live site).
+
+## Performance and accessibility (Lighthouse, measured)
+Lighthouse 13.6.0, default mobile preset (simulated throttling), headless Chrome, live site, median of 3 runs each, Nov 20, 2026, before and after commit `2b6d762` (lazy Firebase SDK + a11y fixes):
+
+| Page | Performance | Accessibility | Best practices | Time to Interactive | JS transferred | Total transferred |
+|---|---|---|---|---|---|---|
+| `/` before | 94 | 91 | 73 | 7.4 s | 662 KB | 803 KB |
+| `/` after | **97** | **100** | **100** | **1.8 s** | **138 KB** | **211 KB** |
+| `/eval` before | 99 | 96 | 100 | 2.5 s | 308 KB | 381 KB |
+| `/eval` after | 97 | **100** | 100 | **1.8 s** | **138 KB** | **211 KB** |
+
+Fixed: grey helper text was 4.4:1 on the page background (AA needs 4.5:1), the bill textarea had no label, the `/eval` miss and cloud tables had no column headers, and the App Check 403 console error and reCAPTCHA third-party cookie fired on page load. Caveat: the Firebase SDK still loads on first interaction or after 6 s. That happens after Lighthouse's load window, so these numbers describe the initial load, not the cost of the cloud path. `/eval` performance 99 → 97 is within run-to-run noise (single runs ranged 93 to 99 before and 97 to 99 after).
 
 ## Firebase usage (project `billshield-d2dcb`, Spark plan)
 - **Firebase AI Logic** (`firebase/ai`, Gemini Developer API backend):
@@ -71,10 +83,11 @@ Reproduce: `npm run eval` and `npm test` (56 tests, also run in CI with lint and
   - `initializeDeviceModel()` is called on the user's click (Chrome user-activation rule).
   - Model default: `gemini-3.5-flash-lite` rather than `gemini-2.5-flash-lite`, because the Firebase docs say 2.5 Flash requests get rerouted from Dec 1, 2026, before judging.
 - **App Check** (`firebase/app-check`): `ReCaptchaEnterpriseProvider` by default (`NEXT_PUBLIC_APPCHECK_PROVIDER=enterprise`), because Google deprecated reCAPTCHA v3 onboarding. `ReCaptchaV3Provider` remains available if the provider is set to `v3`. A token probe runs at startup. If it fails, the AI call is still attempted (retried once without the App Check header) and the failure is shown in the privacy receipt.
+- **Lazy SDK loading** (`src/lib/lazy-hybrid.ts`, Nov 20): the Firebase SDK (AI Logic, App Check + reCAPTCHA, Remote Config, Firestore) is a separate chunk loaded on the first interaction (pointer, key, touch, focus), after 6 s, or at the latest when **Audit privately** is clicked. The rules scan, redaction, audit and leak gate never need it. If the chunk cannot be fetched (offline before it was ever cached), the run falls back to rules-only scrub + template letter and sends nothing.
 - **Remote Config**: `cloud_model` and `outlier_multiple` (audit threshold), with in-code defaults.
 - **Firestore**: writes only anonymous aggregate stats (rule counts, a dollar bucket, inference sources, gate result) to `aggregate_runs`. No bill text, no identifiers. Locked-down rules are in `firestore.rules`; a contract test (`tests/firestore-contract.test.ts`) checks that the record the app writes matches the rules' field allow-list and contains no identifiers or exact dollar amounts.
 
-## Honest status (Nov 18, 2026)
+## Honest status (Nov 20, 2026)
 - ✅ Firebase AI Logic is live. The cloud letter path works end to end on https://billshield-kappa.vercel.app (verified in headless Chrome; the receipt shows "Firebase AI Logic · cloud (Gemini)", and the redaction guard passes).
 - ✅ **App Check is registered with the reCAPTCHA Enterprise provider.** Verified Nov 16, 2026 on https://billshield-kappa.vercel.app in headless Chrome: the pill reads `App Check (reCAPTCHA Enterprise): token OK`, the privacy receipt reads `token OK (reCAPTCHA Enterprise)`, `exchangeRecaptchaEnterpriseToken` returns 200, and the cloud letter request includes the `X-Firebase-AppCheck` header. The leak gate still reported `0 identifiers in 540 outbound bytes` on Sample 1. **Enforcement is still off.** We use Enterprise because Google deprecated reCAPTCHA v3 onboarding. If a token cannot be minted, the app still retries once without the header and otherwise falls back to the deterministic template letter.
 - ✅ **Firestore aggregate writes work.** Re-verified Nov 15, 2026 on the live site in headless Chrome: the privacy receipt shows "Anonymous stats (Firestore): rule counts + $ bucket saved", and the Firestore Write channel returns 200. Unauthenticated reads of `aggregate_runs` (and any other collection) return `403 PERMISSION_DENIED`, which matches the client read lock in `firestore.rules`. (Earlier on Nov 14, writes failed with `Missing or insufficient permissions`; that is now resolved.)
