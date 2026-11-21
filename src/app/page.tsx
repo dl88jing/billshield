@@ -9,6 +9,7 @@ import type { ModelResult, FirebaseStatus } from "@/lib/hybrid";
 import { capabilities, type Capabilities } from "@/lib/caps";
 import { loadHybrid, loadedHybrid, loadHybridWhenNeeded, hybridFallback } from "@/lib/lazy-hybrid";
 import { buildAggregate } from "@/lib/stats";
+import { routingTrace, TRACE_TEXT, NANO_DETAIL_REASONS, type Trace } from "@/lib/route-trace";
 import { useOfflineState } from "@/lib/offline";
 import { localizedFinding } from "@/lib/i18n";
 import { UI, type StepKey, type StepState } from "@/lib/ui-i18n";
@@ -43,6 +44,7 @@ export default function Home() {
   const [lcheck, setLcheck] = useState<LetterCheck | null>(null);
   const [fb, setFb] = useState<FirebaseStatus | null>(null);
   const [store, setStore] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [trace, setTrace] = useState<Trace | null>(null);
   const net = useOfflineState();
   const [lang, setLang] = useState<LetterLang>("en");
   const [uiLang, setUiLang] = useUiLang();
@@ -57,9 +59,10 @@ export default function Home() {
   const set = (k: Key, v: StepState) => setSteps((s) => ({ ...s, [k]: v }));
 
   async function run() {
-    setBusy(true); setFindings(null); setLetter(null); setFinalLetter(""); setReceipt(null); setGate(null); setDevice(null); setStore(null); setLcheck(null);
+    setBusy(true); setFindings(null); setLetter(null); setFinalLetter(""); setReceipt(null); setGate(null); setDevice(null); setStore(null); setLcheck(null); setTrace(null);
     setSteps({ scan: "idle", device: "idle", gate: "idle", audit: "idle", letter: "idle" });
-    const { warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, status: fbStatus } = loadedHybrid() ?? await loadHybrid().catch(() => hybridFallback());
+    let sdk = true; // false if the lazy Firebase chunk could not be loaded
+    const { warmUpOnDevice, proposePiiOnDevice, draftLetter, firebaseReady, recordAggregate, status: fbStatus } = loadedHybrid() ?? await loadHybrid().catch(() => { sdk = false; return hybridFallback(); });
     const warm = warmUpOnDevice((p) => setProgress(p)); // user-activation: started inside the click (module is normally preloaded by the pointerdown)
 
     set("scan", "running");
@@ -68,6 +71,7 @@ export default function Home() {
 
     set("device", "running");
     await warm;
+    const nano = (await capabilities()).onDevice; // what Chrome reports this run, for the routing trace
     const dev = await proposePiiOnDevice(text);
     setDevice(dev);
     const modelSpans = acceptModelProposals(text, dev.proposals);
@@ -90,7 +94,8 @@ export default function Home() {
     const payload = buildPayload(f, Object.keys(red.vault), bill.provider, lang);
     const g = leakGate(payload, red.vault);
     setGate(g);
-    if (!g.pass) { set("gate", "blocked"); set("letter", "skipped"); setBusy(false); return; }
+    const traceBase = { nano, firebase: fbStatus.configured, sdk, offline, device: { source: dev.source, error: dev.error }, gate: { pass: g.pass, bytes: g.checkedBytes, leaks: g.leaks.length } };
+    if (!g.pass) { set("gate", "blocked"); set("letter", "skipped"); setTrace(routingTrace(traceBase)); setBusy(false); return; }
     set("gate", "done");
     setReceipt({ payload, bytes: g.checkedBytes, hash: await sha256(payload), rawBytes: new TextEncoder().encode(text).length });
 
@@ -98,16 +103,21 @@ export default function Home() {
     let l: ModelResult = offline
       ? { text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", ms: 0, note: t.noteOffline }
       : await draftLetter(payload, () => templateLetter(f, Object.keys(red.vault), bill.provider, lang), lang);
+    const drafted = l.source; let rejected: "fact_check" | "identifier" | undefined;
     // internal rule tags ([MATH], [DUP], 【RULE】 …) are removed deterministically before the fact check and display
     if (l.source !== "template") l = { ...l, text: stripInternalTags(l.text).text };
     if (l.source !== "template") {
       const lc = checkLetter(l.text, f, Object.keys(red.vault));
       setLcheck(lc);
+      if (!lc.pass) rejected = "fact_check";
       if (!lc.pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", note: t.noteRejected(lc.issues.join("; ")) };
     }
     // final guard: the model output itself must not contain raw identifiers before re-insertion
-    if (!leakGate(l.text, red.vault).pass) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", note: t.noteIdentifier };
+    const outLeak = !leakGate(l.text, red.vault).pass;
+    if (outLeak && l.source !== "template") rejected = "identifier";
+    if (outLeak) l = { ...l, text: templateLetter(f, Object.keys(red.vault), bill.provider, lang), source: "template", note: t.noteIdentifier };
     setLetter(l); setLetterLang(lang);
+    setTrace(routingTrace({ ...traceBase, letter: { drafted, final: l.source, rejected, error: l.error, model: l.model } }));
     setFinalLetter(rehydrate(l.text, red.vault)); // identity re-inserted locally, never sent
     set("letter", "done");
     if (offline) setStore({ ok: false, error: "offline, nothing sent" });
@@ -221,6 +231,24 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {trace && (() => { const tt = TRACE_TEXT[uiLang]; return (
+        <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" data-testid="route-trace" data-raw-out={trace.rawBytesOut} data-redacted-out={trace.redactedBytesOut}>
+          <h2 className="text-sm font-semibold">{tt.title}</h2>
+          <p className="mt-1 text-xs text-neutral-600">{tt.intro}</p>
+          <div className="mt-3 overflow-x-auto"><table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase text-neutral-600"><th className="py-1 pr-3">{tt.thStep}</th><th className="pr-3">{tt.thMode}</th><th className="pr-3">{tt.thPath}</th><th className="pr-3">{tt.thWhy}</th><th className="text-right">{tt.thBytes}</th></tr></thead>
+            <tbody>{trace.rows.map((r) => (
+              <tr key={r.step} data-testid={`trace-${r.step}`} data-path={r.path} data-reason={r.reason} className="border-t border-neutral-100 align-top">
+                <td className="py-2 pr-3 font-medium">{tt.step[r.step]}</td>
+                <td className="py-2 pr-3 font-mono text-[11px]">{r.mode}</td>
+                <td className="py-2 pr-3"><span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${r.path === "in_cloud" ? "bg-sky-100 text-sky-900" : r.path === "on_device" || r.path === "local" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>{tt.path[r.path]}</span></td>
+                <td className="py-2 pr-3 text-xs text-neutral-700">{tt.reason[r.reason](NANO_DETAIL_REASONS.includes(r.reason) ? t.onDeviceValue(r.detail ?? "") : r.detail ?? "", r.model ?? "")}</td>
+                <td className="py-2 text-right font-mono">{r.bytesOut}</td>
+              </tr>))}</tbody>
+          </table></div>
+          <p data-testid="trace-summary" className="mt-3 rounded-lg bg-neutral-50 p-2 text-xs font-medium text-neutral-800">{tt.summary(trace.rawBytesOut, trace.redactedBytesOut)}</p>
+        </section>); })()}
 
       {finalLetter && (
         <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" data-testid="letter" data-lang={letterLang} lang={letterLang}>
