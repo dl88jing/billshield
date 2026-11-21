@@ -199,7 +199,7 @@ export default function Home() {
           {shown.length === 0 ? <p className="mt-2 text-sm">{t.noFindings}</p> : (
             <table className="mt-3 w-full text-sm"><thead><tr className="text-left text-xs uppercase text-neutral-600"><th className="py-1">{t.thRule}</th><th>{t.thFinding}</th><th className="text-right">{t.thAmount}</th></tr></thead>
               <tbody>{shown.map(({ f, title, detail }, i) => (
-                <tr key={i} className="border-t border-neutral-100 align-top"><td className="py-2 pr-3"><span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${f.severity === "advisory" ? "bg-amber-100 text-amber-900" : "bg-red-100 text-red-900"}`}>{f.rule}</span></td>
+                <tr key={i} className="border-t border-neutral-100 align-top"><td className="whitespace-nowrap py-2 pr-3"><span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${f.severity === "advisory" ? "bg-amber-100 text-amber-900" : "bg-red-100 text-red-900"}`}>{f.rule}</span></td>
                   <td className="py-2"><div className="font-medium">{title}</div><div className="text-xs text-neutral-600">{detail}{f.lines.length ? t.billLine(f.lines.join(", ")) : ""}</div></td>
                   <td className="py-2 text-right font-mono">{usd(f.atStake)}</td></tr>))}</tbody></table>)}
         </section>
@@ -237,12 +237,12 @@ export default function Home() {
           <h2 className="text-sm font-semibold">{tt.title}</h2>
           <p className="mt-1 text-xs text-neutral-600">{tt.intro}</p>
           <div className="mt-3 overflow-x-auto"><table className="w-full text-sm">
-            <thead><tr className="text-left text-xs uppercase text-neutral-600"><th className="py-1 pr-3">{tt.thStep}</th><th className="pr-3">{tt.thMode}</th><th className="pr-3">{tt.thPath}</th><th className="pr-3">{tt.thWhy}</th><th className="text-right">{tt.thBytes}</th></tr></thead>
+            <thead><tr className="text-left text-xs uppercase text-neutral-600"><th className="py-1 pr-3">{tt.thStep}</th><th className="pr-3">{tt.thMode}</th><th className="pr-3">{tt.thPath}</th><th className="pr-3">{tt.thWhy}</th><th className="whitespace-nowrap text-right">{tt.thBytes}</th></tr></thead>
             <tbody>{trace.rows.map((r) => (
               <tr key={r.step} data-testid={`trace-${r.step}`} data-path={r.path} data-reason={r.reason} className="border-t border-neutral-100 align-top">
-                <td className="py-2 pr-3 font-medium">{tt.step[r.step]}</td>
-                <td className="py-2 pr-3 font-mono text-[11px]">{r.mode}</td>
-                <td className="py-2 pr-3"><span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${r.path === "in_cloud" ? "bg-sky-100 text-sky-900" : r.path === "on_device" || r.path === "local" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>{tt.path[r.path]}</span></td>
+                <td className="whitespace-nowrap py-2 pr-3 font-medium">{tt.step[r.step]}</td>
+                <td className="py-2 pr-3 font-mono text-[11px]">{r.mode === "deterministic" ? tt.deterministic : r.mode}</td>
+                <td className="whitespace-nowrap py-2 pr-3"><span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${r.path === "in_cloud" ? "bg-sky-100 text-sky-900" : r.path === "on_device" || r.path === "local" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>{tt.path[r.path]}</span></td>
                 <td className="py-2 pr-3 text-xs text-neutral-700">{tt.reason[r.reason](NANO_DETAIL_REASONS.includes(r.reason) ? t.onDeviceValue(r.detail ?? "") : r.detail ?? "", r.model ?? "")}</td>
                 <td className="py-2 text-right font-mono">{r.bytesOut}</td>
               </tr>))}</tbody>

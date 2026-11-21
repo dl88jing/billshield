@@ -93,6 +93,7 @@ test("every reason, step and path has EN/ES/JA text; numbers, model names and mo
     if (l !== "en") {
       for (const r of reasons) assert.notEqual(tt.reason[r]("7", "m"), TRACE_TEXT.en.reason[r]("7", "m"), `${l} untranslated ${r}`);
       assert.notEqual(tt.title, TRACE_TEXT.en.title);
+      assert.notEqual(tt.deterministic, TRACE_TEXT.en.deterministic);
     }
   }
   for (const v of [...Object.values(TRACE_TEXT.ja.step), ...Object.values(TRACE_TEXT.ja.path), TRACE_TEXT.ja.title]) assert.match(v, /[\u3040-\u30ff\u4e00-\u9fff]/, v);

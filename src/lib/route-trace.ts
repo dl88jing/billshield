@@ -81,14 +81,14 @@ export function routingTrace(i: TraceInput): Trace {
 }
 
 type TraceText = {
-  title: string; intro: string; thStep: string; thMode: string; thPath: string; thWhy: string; thBytes: string;
+  title: string; intro: string; deterministic: string; thStep: string; thMode: string; thPath: string; thWhy: string; thBytes: string;
   step: Record<TraceStep, string>; path: Record<TracePath, string>; reason: Record<TraceReason, (detail: string, model: string) => string>;
   summary: (raw: number, redacted: number) => string;
 };
 
 export const TRACE_TEXT: Record<Lang, TraceText> = {
   en: {
-    title: "Why this path? (hybrid routing trace)",
+    title: "Why this path? (hybrid routing trace)", deterministic: "deterministic",
     intro: "Each model step, the Firebase AI Logic inference mode it asked for, where it actually ran on this run, and why.",
     thStep: "Step", thMode: "Mode", thPath: "Ran", thWhy: "Why", thBytes: "Bytes sent",
     step: { scrub: "Raw-text scrub", gate: "Leak gate", letter: "Letter draft", check: "Letter check" },
@@ -96,7 +96,7 @@ export const TRACE_TEXT: Record<Lang, TraceText> = {
     reason: {
       nano_ready: () => "Gemini Nano is available in this Chrome, so the raw bill was scrubbed on-device.",
       prompt_api_direct: () => "Firebase is not configured, so Chrome's Prompt API was called directly on-device.",
-      no_nano: (d) => `No on-device model (Chrome reports: ${d}). ONLY_ON_DEVICE has no cloud fallback, so the raw text is never sent anywhere; the rules scan alone redacted it.`,
+      no_nano: (d) => `No on-device model (Chrome reports: ${d}), so the ONLY_ON_DEVICE raw-text request was never built (raw text has no cloud path); the rules scan alone redacted it.`,
       nano_failed: (d) => `Gemini Nano failed (${d}); rules-only scrub used. Raw text still not sent.`,
       sdk_unreachable: () => "The AI module could not be loaded (offline?), so the rules-only scrub was used. Nothing sent.",
       gate_pass: (d) => `0 identifiers found in ${d} outbound bytes, so a cloud model may see them.`,
@@ -116,7 +116,7 @@ export const TRACE_TEXT: Record<Lang, TraceText> = {
     summary: (raw, red) => `Raw bill bytes sent off this device: ${raw}. Redacted bytes sent to a cloud model: ${red}.`,
   },
   es: {
-    title: "¿Por qué esta ruta? (traza de enrutamiento híbrido)",
+    title: "¿Por qué esta ruta? (traza de enrutamiento híbrido)", deterministic: "determinista",
     intro: "Cada paso con modelo, el modo de inferencia de Firebase AI Logic que pidió, dónde se ejecutó realmente en esta ejecución y por qué.",
     thStep: "Paso", thMode: "Modo", thPath: "Se ejecutó", thWhy: "Motivo", thBytes: "Bytes enviados",
     step: { scrub: "Limpieza del texto original", gate: "Filtro de fugas", letter: "Borrador de la carta", check: "Revisión de la carta" },
@@ -124,7 +124,7 @@ export const TRACE_TEXT: Record<Lang, TraceText> = {
     reason: {
       nano_ready: () => "Gemini Nano está disponible en este Chrome, así que la factura original se limpió en el dispositivo.",
       prompt_api_direct: () => "Firebase no está configurado, así que se llamó directamente a la Prompt API de Chrome en el dispositivo.",
-      no_nano: (d) => `No hay modelo en el dispositivo (Chrome indica: ${d}). ONLY_ON_DEVICE no tiene alternativa en la nube, así que el texto original nunca se envía; solo el análisis por reglas lo anonimizó.`,
+      no_nano: (d) => `No hay modelo en el dispositivo (Chrome indica: ${d}), así que la solicitud ONLY_ON_DEVICE con el texto original nunca se creó (el texto original no tiene ruta a la nube); solo el análisis por reglas lo anonimizó.`,
       nano_failed: (d) => `Gemini Nano falló (${d}); se usó solo la limpieza por reglas. El texto original tampoco se envió.`,
       sdk_unreachable: () => "No se pudo cargar el módulo de IA (¿sin conexión?), así que se usó solo la limpieza por reglas. No se envió nada.",
       gate_pass: (d) => `0 identificadores en ${d} bytes salientes, así que un modelo en la nube puede verlos.`,
@@ -144,7 +144,7 @@ export const TRACE_TEXT: Record<Lang, TraceText> = {
     summary: (raw, red) => `Bytes de la factura original enviados fuera del dispositivo: ${raw}. Bytes anonimizados enviados a un modelo en la nube: ${red}.`,
   },
   ja: {
-    title: "なぜこの経路か（ハイブリッド経路トレース）",
+    title: "なぜこの経路か（ハイブリッド経路トレース）", deterministic: "決定的（モデル不使用）",
     intro: "モデルを使う各ステップについて、要求した Firebase AI Logic の推論モード、今回実際に実行された場所、その理由を示します。",
     thStep: "ステップ", thMode: "モード", thPath: "実行場所", thWhy: "理由", thBytes: "送信バイト数",
     step: { scrub: "原文のスクラブ", gate: "漏えいゲート", letter: "レターの下書き", check: "レターの検証" },
@@ -152,7 +152,7 @@ export const TRACE_TEXT: Record<Lang, TraceText> = {
     reason: {
       nano_ready: () => "この Chrome で Gemini Nano が使えるため、請求書の原文は端末上でスクラブされました。",
       prompt_api_direct: () => "Firebase が未設定のため、Chrome の Prompt API を端末上で直接呼び出しました。",
-      no_nano: (d) => `端末上のモデルがありません（Chrome の報告: ${d}）。ONLY_ON_DEVICE にはクラウドへのフォールバックがないため、原文はどこにも送信されず、ルールスキャンのみで匿名化しました。`,
+      no_nano: (d) => `端末上のモデルがありません（Chrome の報告: ${d}）。そのため原文を含む ONLY_ON_DEVICE リクエストは作成されず（原文にクラウドへの経路はありません）、ルールスキャンのみで匿名化しました。`,
       nano_failed: (d) => `Gemini Nano が失敗しました（${d}）。ルールのみのスクラブを使用しました。原文は送信していません。`,
       sdk_unreachable: () => "AI モジュールを読み込めなかったため（オフライン？）、ルールのみのスクラブを使用しました。何も送信していません。",
       gate_pass: (d) => `送信予定の ${d} バイトに識別子は 0 件のため、クラウドモデルに渡せます。`,
